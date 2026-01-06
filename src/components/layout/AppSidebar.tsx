@@ -23,7 +23,7 @@ import {
   BarChart3,
   LogOut,
   Building2,
-  Map,
+  FileText,
 } from "lucide-react";
 
 const menuItems = {
@@ -32,25 +32,21 @@ const menuItems = {
     { title: "Cadastrar PDV", icon: MapPin, href: "/cadastrar-pdv" },
     { title: "Vendas", icon: ShoppingCart, href: "/vendas" },
     { title: "Cadastrar Cliente", icon: UserPlus, href: "/cadastrar-cliente" },
-    { title: "Vendas", icon: ShoppingCart, href: "/vendas" },
-    { title: "Cadastrar Cliente", icon: UserPlus, href: "/cadastrar-cliente" },
   ],
   manager: [
     { title: "PDV", icon: LayoutGrid, href: "/" },
-    { title: "Distribuir Rotas", icon: Map, href: "/distribuir" }, // <--- NOVO
     { title: "Cadastrar PDV", icon: MapPin, href: "/cadastrar-pdv" },
     { title: "Vendas", icon: ShoppingCart, href: "/vendas" },
-    { title: "Cadastrar", icon: UserPlus, href: "/cadastrar" },
     { title: "Equipe", icon: Users, href: "/equipe" },
-    { title: "Relatórios", icon: BarChart3, href: "/relatorios" },
+    // Gerente acessa relatórios na própria tela de vendas ou rota especifica se houver
   ],
   admin: [
     { title: "PDV", icon: LayoutGrid, href: "/" },
-    { title: "Distribuir Rotas", icon: Map, href: "/distribuir" }, // <--- NOVO
     { title: "Cadastrar PDV", icon: MapPin, href: "/cadastrar-pdv" },
     { title: "Cadastrar", icon: Building2, href: "/cadastrar" },
     { title: "Gerentes", icon: Users, href: "/gerentes" },
-    { title: "Relatórios", icon: BarChart3, href: "/relatorios" },
+    // MUDANÇA AQUI: Relatórios agora aponta para /vendas onde temos a exportação
+    { title: "Relatórios de Vendas", icon: FileText, href: "/vendas" },
   ],
 };
 
@@ -78,7 +74,13 @@ export function AppSidebar() {
           </div>
           <div>
             <h1 className="font-bold text-lg font-display">PDV Tracker</h1>
-            <p className="text-xs text-muted-foreground capitalize">{role}</p>
+            <p className="text-xs text-muted-foreground capitalize">
+              {role === "manager"
+                ? "Gerente"
+                : role === "seller"
+                ? "Vendedor"
+                : "Administrador"}
+            </p>
           </div>
         </div>
       </SidebarHeader>

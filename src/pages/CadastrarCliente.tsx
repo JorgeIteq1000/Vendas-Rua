@@ -9,6 +9,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea"; // Importando Textarea
 import {
   Select,
   SelectContent,
@@ -24,17 +25,25 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { UserPlus, Loader2, DollarSign, BookOpen } from "lucide-react";
+import {
+  UserPlus,
+  Loader2,
+  DollarSign,
+  BookOpen,
+  FileText,
+  CreditCard,
+} from "lucide-react";
 
-// Schema de validação
 const formSchema = z.object({
   nome_completo: z.string().min(3, "Nome muito curto"),
-  cpf: z.string().min(11, "CPF inválido"), // Idealmente adicionar máscara/validação real
+  cpf: z.string().min(11, "CPF inválido"),
   email: z.string().email("Email inválido").optional().or(z.literal("")),
   telefone: z.string().min(10, "Telefone inválido"),
   curso_escolhido: z.string().min(2, "Selecione um curso"),
   valor_inscricao: z.string().min(1, "Valor obrigatório"),
   valor_mensalidade: z.string().min(1, "Valor obrigatório"),
+  parcelas: z.string().min(1, "Informe as parcelas"), // Novo campo
+  observacao: z.string().optional(), // Novo campo
   pdv_id: z.string().optional(),
 });
 
@@ -56,11 +65,12 @@ export default function CadastrarCliente() {
     defaultValues: {
       valor_inscricao: "0",
       valor_mensalidade: "0",
+      parcelas: "1", // Padrão 1x
+      observacao: "",
     },
   });
 
   useEffect(() => {
-    // Carrega PDVs próximos ou atribuídos para facilitar o cadastro
     const loadPdvs = async () => {
       const { data } = await supabase
         .from("points_of_interest")
@@ -84,16 +94,18 @@ export default function CadastrarCliente() {
         curso_escolhido: data.curso_escolhido,
         valor_inscricao: parseFloat(data.valor_inscricao),
         valor_mensalidade: parseFloat(data.valor_mensalidade),
+        parcelas: parseInt(data.parcelas), // Salva inteiro
+        observacao: data.observacao || null, // Salva obs
         pdv_id: data.pdv_id || null,
         seller_id: user.id,
-        status: "pendente", // Status inicial padrão
+        status: "pendente",
       });
 
       if (error) throw error;
 
       toast({
         title: "Venda Realizada!",
-        description: "Cliente cadastrado e aguardando matrícula.",
+        description: "Cliente cadastrado com sucesso.",
       });
       navigate("/vendas");
     } catch (error: any) {
@@ -124,7 +136,6 @@ export default function CadastrarCliente() {
         <Card>
           <CardContent className="pt-6">
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              {/* Dados Pessoais */}
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Nome do Aluno *</Label>
@@ -152,18 +163,8 @@ export default function CadastrarCliente() {
                     />
                   </div>
                 </div>
-
-                <div className="space-y-2">
-                  <Label>Email (Opcional)</Label>
-                  <Input
-                    {...register("email")}
-                    type="email"
-                    placeholder="aluno@email.com"
-                  />
-                </div>
               </div>
 
-              {/* Dados do Curso */}
               <div className="pt-4 border-t space-y-4">
                 <div className="space-y-2">
                   <Label>Curso Escolhido *</Label>
@@ -177,9 +178,9 @@ export default function CadastrarCliente() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label>Valor Inscrição (R$)</Label>
+                    <Label>Inscrição (R$)</Label>
                     <div className="relative">
                       <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
@@ -191,7 +192,7 @@ export default function CadastrarCliente() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label>Valor Mensalidade (R$)</Label>
+                    <Label>Mensalidade (R$)</Label>
                     <div className="relative">
                       <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
@@ -202,13 +203,37 @@ export default function CadastrarCliente() {
                       />
                     </div>
                   </div>
+                  <div className="space-y-2">
+                    <Label>Parcelas</Label>
+                    <div className="relative">
+                      <CreditCard className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        type="number"
+                        min="1"
+                        {...register("parcelas")}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>PDV de Origem (Opcional)</Label>
+                  <Label>Observações</Label>
+                  <div className="relative">
+                    <FileText className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Textarea
+                      {...register("observacao")}
+                      className="pl-10 min-h-[80px]"
+                      placeholder="Detalhes sobre pagamento, melhor horário, etc."
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>PDV de Origem</Label>
                   <Select onValueChange={(val) => setValue("pdv_id", val)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione onde foi a venda" />
+                      <SelectValue placeholder="Selecione o local da venda" />
                     </SelectTrigger>
                     <SelectContent>
                       {pdvs.map((pdv) => (
