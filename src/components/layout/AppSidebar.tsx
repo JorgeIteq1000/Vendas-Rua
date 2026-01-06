@@ -28,11 +28,13 @@ import {
 const menuItems = {
   seller: [
     { title: 'PDV', icon: LayoutGrid, href: '/' },
+    { title: 'Cadastrar PDV', icon: MapPin, href: '/cadastrar-pdv' },
     { title: 'Vendas', icon: ShoppingCart, href: '/vendas' },
     { title: 'Cadastrar Cliente', icon: UserPlus, href: '/cadastrar-cliente' },
   ],
   manager: [
     { title: 'PDV', icon: LayoutGrid, href: '/' },
+    { title: 'Cadastrar PDV', icon: MapPin, href: '/cadastrar-pdv' },
     { title: 'Vendas', icon: ShoppingCart, href: '/vendas' },
     { title: 'Cadastrar', icon: UserPlus, href: '/cadastrar' },
     { title: 'Equipe', icon: Users, href: '/equipe' },
@@ -40,6 +42,7 @@ const menuItems = {
   ],
   admin: [
     { title: 'PDV', icon: LayoutGrid, href: '/' },
+    { title: 'Cadastrar PDV', icon: MapPin, href: '/cadastrar-pdv' },
     { title: 'Cadastrar', icon: Building2, href: '/cadastrar' },
     { title: 'Gerentes', icon: Users, href: '/gerentes' },
     { title: 'Relatórios', icon: BarChart3, href: '/relatorios' },
