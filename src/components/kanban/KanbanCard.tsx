@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   MapPin,
@@ -18,7 +19,7 @@ import {
   ArrowRight,
   Clock,
   AlertTriangle,
-  User,
+  ExternalLink,
 } from "lucide-react";
 
 type VisitStatus = "a_visitar" | "em_rota" | "visitado" | "finalizado";
@@ -44,7 +45,7 @@ interface Visit {
   checkin_time: string | null;
   checkout_time: string | null;
   poi: POI | null;
-  assignee: Profile | null; // Novo campo
+  assignee: Profile | null;
 }
 
 interface KanbanCardProps {
@@ -88,7 +89,8 @@ export function KanbanCard({
   onStatusChange,
   calculateDistance,
 }: KanbanCardProps) {
-  const [showDialog, setShowDialog] = useState(false);
+  const [showFinishDialog, setShowFinishDialog] = useState(false);
+  const [showGpsDialog, setShowGpsDialog] = useState(false);
   const [collaboratorCount, setCollaboratorCount] = useState("");
 
   // 🛡️ BLINDAGEM DE DADOS
@@ -108,7 +110,6 @@ export function KanbanCard({
     : null;
   const next = nextStatus[currentStatus];
 
-  // Extrai as iniciais do responsável para o Avatar
   const assigneeName = visit.assignee?.full_name || "Desconhecido";
   const assigneeInitials = assigneeName
     .split(" ")
@@ -118,25 +119,53 @@ export function KanbanCard({
     .slice(0, 2);
 
   const handleAction = () => {
-    if (currentStatus === "visitado") {
-      setShowDialog(true);
+    if (currentStatus === "a_visitar") {
+      // Abre escolha de GPS
+      setShowGpsDialog(true);
+    } else if (currentStatus === "visitado") {
+      // Abre finalização
+      setShowFinishDialog(true);
     } else if (next) {
+      // Ação direta (Em Rota -> Visitado)
       onStatusChange(visit.id, next);
     }
+  };
+
+  const handleStartRoute = (app: "waze" | "google") => {
+    if (!visit.poi) return;
+
+    // Monta o endereço completo para maior precisão
+    const destination = encodeURIComponent(
+      `${visit.poi.endereco}, ${visit.poi.bairro}`
+    );
+
+    let url = "";
+    if (app === "waze") {
+      url = `https://waze.com/ul?q=${destination}&navigate=yes`;
+    } else {
+      url = `https://www.google.com/maps/search/?api=1&query=${destination}`;
+    }
+
+    // Abre o GPS
+    window.open(url, "_blank");
+
+    // Atualiza status para "Em Rota"
+    onStatusChange(visit.id, "em_rota");
+    setShowGpsDialog(false);
   };
 
   const handleFinalize = () => {
     const count = parseInt(collaboratorCount, 10);
     if (isNaN(count) || count < 0) return;
     onStatusChange(visit.id, "finalizado", count);
-    setShowDialog(false);
+    setShowFinishDialog(false);
     setCollaboratorCount("");
   };
 
   return (
     <>
       <Card className="p-4 space-y-3 bg-card border-border/50 hover:border-primary/30 transition-colors shadow-sm group">
-        {/* Cabeçalho do Card */}
+        {/* Cabeçalho */}
         <div className="flex items-start justify-between gap-2">
           <div>
             <h4 className="font-semibold text-sm leading-tight group-hover:text-primary transition-colors">
@@ -146,7 +175,6 @@ export function KanbanCard({
               <Badge variant="secondary" className="text-[10px] px-1.5 h-5">
                 {poiTypeLabels[visit.poi.tipo] || visit.poi.tipo}
               </Badge>
-              {/* Badge do Responsável */}
               <div className="flex items-center gap-1.5 bg-muted rounded-full px-2 py-0.5 border">
                 <Avatar className="w-3 h-3">
                   <AvatarFallback className="text-[8px] bg-primary text-primary-foreground">
@@ -168,7 +196,7 @@ export function KanbanCard({
           )}
         </div>
 
-        {/* Detalhes de Endereço */}
+        {/* Endereço */}
         <div className="space-y-1 text-xs text-muted-foreground">
           <div className="flex items-start gap-2">
             <MapPin className="w-3 h-3 mt-0.5 shrink-0" />
@@ -179,7 +207,7 @@ export function KanbanCard({
           </div>
         </div>
 
-        {/* Métricas e Timers */}
+        {/* Status e Timers */}
         <div className="flex flex-wrap gap-2 pt-1">
           {visit.collaborator_count !== null && (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded">
@@ -201,7 +229,7 @@ export function KanbanCard({
           )}
         </div>
 
-        {/* Botão de Ação */}
+        {/* Botão Principal */}
         {next && (
           <Button
             size="sm"
@@ -214,8 +242,44 @@ export function KanbanCard({
         )}
       </Card>
 
-      {/* Dialog de Finalização */}
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+      {/* 🚀 DIALOG 1: ESCOLHA DE GPS */}
+      <Dialog open={showGpsDialog} onOpenChange={setShowGpsDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Iniciar Navegação</DialogTitle>
+            <DialogDescription>
+              Escolha seu aplicativo preferido para ir até{" "}
+              <strong>{visit.poi.nome}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-4">
+            <Button
+              variant="outline"
+              className="h-20 flex flex-col gap-2 hover:border-blue-500 hover:bg-blue-50"
+              onClick={() => handleStartRoute("waze")}
+            >
+              <Navigation className="w-6 h-6 text-blue-500" />
+              <span>Waze</span>
+            </Button>
+            <Button
+              variant="outline"
+              className="h-20 flex flex-col gap-2 hover:border-green-500 hover:bg-green-50"
+              onClick={() => handleStartRoute("google")}
+            >
+              <MapPin className="w-6 h-6 text-green-600" />
+              <span>Google Maps</span>
+            </Button>
+          </div>
+          <DialogFooter className="sm:justify-start">
+            <div className="text-xs text-muted-foreground w-full text-center">
+              A rota será iniciada automaticamente após a escolha.
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ✅ DIALOG 2: FINALIZAR VISITA */}
+      <Dialog open={showFinishDialog} onOpenChange={setShowFinishDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Finalizar Visita</DialogTitle>
@@ -236,11 +300,14 @@ export function KanbanCard({
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDialog(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowFinishDialog(false)}
+            >
               Cancelar
             </Button>
             <Button onClick={handleFinalize} disabled={!collaboratorCount}>
-              Concluir
+              Concluir e Salvar
             </Button>
           </DialogFooter>
         </DialogContent>
