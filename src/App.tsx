@@ -9,6 +9,8 @@ import Auth from "./pages/Auth";
 import CadastrarPDV from "./pages/CadastrarPDV";
 import Gerentes from "./pages/Gerentes";
 import NotFound from "./pages/NotFound";
+import ImportarEscolas from "./pages/ImportarEscolas"; // Importe a nova página
+import DistribuirRotas from "./pages/DistribuirRotas";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +29,8 @@ const App = () => (
             <Route path="/equipe" element={<Gerentes />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
+            <Route path="/importar-escolas" element={<ImportarEscolas />} />
+            <Route path="/distribuir" element={<DistribuirRotas />} />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>

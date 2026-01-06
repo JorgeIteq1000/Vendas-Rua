@@ -1,18 +1,25 @@
-import { useState } from 'react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+import { useState } from "react";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from '@/components/ui/dialog';
-import { MapPin, Navigation, Users, ArrowRight, Clock } from 'lucide-react';
+} from "@/components/ui/dialog";
+import {
+  MapPin,
+  Navigation,
+  Users,
+  ArrowRight,
+  Clock,
+  AlertTriangle,
+} from "lucide-react";
 
-type VisitStatus = 'a_visitar' | 'em_rota' | 'visitado' | 'finalizado';
+type VisitStatus = "a_visitar" | "em_rota" | "visitado" | "finalizado";
 
 interface POI {
   id: string;
@@ -30,38 +37,42 @@ interface Visit {
   collaborator_count: number | null;
   checkin_time: string | null;
   checkout_time: string | null;
-  poi: POI;
+  poi: POI | null; // POI pode ser nulo se a permissão falhar
 }
 
 interface KanbanCardProps {
   visit: Visit;
   currentStatus: VisitStatus;
-  onStatusChange: (visitId: string, newStatus: VisitStatus, collaboratorCount?: number) => void;
+  onStatusChange: (
+    visitId: string,
+    newStatus: VisitStatus,
+    collaboratorCount?: number
+  ) => void;
   calculateDistance: (coords: string) => number | null;
 }
 
 const nextStatus: Record<VisitStatus, VisitStatus | null> = {
-  a_visitar: 'em_rota',
-  em_rota: 'visitado',
-  visitado: 'finalizado',
+  a_visitar: "em_rota",
+  em_rota: "visitado",
+  visitado: "finalizado",
   finalizado: null,
 };
 
 const statusLabels: Record<VisitStatus, string> = {
-  a_visitar: 'Iniciar Rota',
-  em_rota: 'Marcar Visitado',
-  visitado: 'Finalizar',
-  finalizado: '',
+  a_visitar: "Iniciar Rota",
+  em_rota: "Marcar Visitado",
+  visitado: "Finalizar",
+  finalizado: "",
 };
 
 const poiTypeLabels: Record<string, string> = {
-  escola: 'Escola',
-  hospital: 'Hospital',
-  upa: 'UPA',
-  clinica: 'Clínica',
-  empresa: 'Empresa',
-  comercio: 'Comércio',
-  outro: 'Outro',
+  escola: "Escola",
+  hospital: "Hospital",
+  upa: "UPA",
+  clinica: "Clínica",
+  empresa: "Empresa",
+  comercio: "Comércio",
+  outro: "Outro",
 };
 
 export function KanbanCard({
@@ -71,15 +82,32 @@ export function KanbanCard({
   calculateDistance,
 }: KanbanCardProps) {
   const [showDialog, setShowDialog] = useState(false);
-  const [collaboratorCount, setCollaboratorCount] = useState('');
+  const [collaboratorCount, setCollaboratorCount] = useState("");
 
-  const distance = visit.poi.coordenadas ? calculateDistance(visit.poi.coordenadas) : null;
+  // 🛡️ BLINDAGEM: Verifica se POI existe antes de tentar acessar
+  if (!visit.poi) {
+    return (
+      <Card className="p-4 bg-destructive/10 border-destructive/50">
+        <div className="flex items-center gap-2 text-destructive">
+          <AlertTriangle className="w-4 h-4" />
+          <span className="text-xs font-medium">
+            Dados do local indisponíveis
+          </span>
+        </div>
+      </Card>
+    );
+  }
+
+  // Agora é seguro acessar visit.poi
+  const distance = visit.poi.coordenadas
+    ? calculateDistance(visit.poi.coordenadas)
+    : null;
   const next = nextStatus[currentStatus];
 
   const handleAction = () => {
-    console.log('[KanbanCard] Action triggered for status:', currentStatus);
-    
-    if (currentStatus === 'visitado') {
+    console.log("[KanbanCard] Action triggered for status:", currentStatus);
+
+    if (currentStatus === "visitado") {
       setShowDialog(true);
     } else if (next) {
       onStatusChange(visit.id, next);
@@ -91,10 +119,10 @@ export function KanbanCard({
     if (isNaN(count) || count < 0) {
       return;
     }
-    console.log('[KanbanCard] Finalizing with collaborators:', count);
-    onStatusChange(visit.id, 'finalizado', count);
+    console.log("[KanbanCard] Finalizing with collaborators:", count);
+    onStatusChange(visit.id, "finalizado", count);
     setShowDialog(false);
-    setCollaboratorCount('');
+    setCollaboratorCount("");
   };
 
   return (
@@ -102,7 +130,9 @@ export function KanbanCard({
       <Card className="p-4 space-y-3 bg-card border-border/50 hover:border-primary/30 transition-colors">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <h4 className="font-semibold text-sm leading-tight">{visit.poi.nome}</h4>
+            <h4 className="font-semibold text-sm leading-tight">
+              {visit.poi.nome}
+            </h4>
             <Badge variant="secondary" className="mt-1 text-xs">
               {poiTypeLabels[visit.poi.tipo] || visit.poi.tipo}
             </Badge>
@@ -110,7 +140,7 @@ export function KanbanCard({
           {distance !== null && (
             <div className="flex items-center gap-1 text-xs text-primary font-medium whitespace-nowrap">
               <Navigation className="w-3 h-3" />
-              {distance} km
+              {distance.toFixed(1)} km
             </div>
           )}
         </div>
@@ -120,7 +150,9 @@ export function KanbanCard({
             <MapPin className="w-3 h-3 mt-0.5 shrink-0" />
             <span className="line-clamp-2">{visit.poi.endereco}</span>
           </div>
-          <div className="font-medium text-foreground/80">{visit.poi.bairro}</div>
+          <div className="font-medium text-foreground/80">
+            {visit.poi.bairro}
+          </div>
         </div>
 
         {visit.collaborator_count !== null && (
@@ -133,16 +165,18 @@ export function KanbanCard({
         {visit.checkin_time && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Clock className="w-3 h-3" />
-            <span>Check-in: {new Date(visit.checkin_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+            <span>
+              Check-in:{" "}
+              {new Date(visit.checkin_time).toLocaleTimeString("pt-BR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </span>
           </div>
         )}
 
         {next && (
-          <Button
-            size="sm"
-            className="w-full h-10 mt-2"
-            onClick={handleAction}
-          >
+          <Button size="sm" className="w-full h-10 mt-2" onClick={handleAction}>
             {statusLabels[currentStatus]}
             <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
@@ -156,7 +190,8 @@ export function KanbanCard({
           </DialogHeader>
           <div className="space-y-4 py-4">
             <p className="text-sm text-muted-foreground">
-              Informe a quantidade de colaboradores encontrados em <strong>{visit.poi.nome}</strong>:
+              Informe a quantidade de colaboradores encontrados em{" "}
+              <strong>{visit.poi.nome}</strong>:
             </p>
             <Input
               type="number"

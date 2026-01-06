@@ -1,8 +1,15 @@
-import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import {
+  useState,
+  useEffect,
+  createContext,
+  useContext,
+  ReactNode,
+} from "react";
+import { User, Session } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast"; // Importando Toast para feedback visual
 
-type UserRole = 'admin' | 'manager' | 'seller';
+type UserRole = "admin" | "manager" | "seller";
 
 interface Profile {
   id: string;
@@ -11,6 +18,7 @@ interface Profile {
   role: UserRole;
   manager_id: string | null;
   assigned_neighborhoods: string[];
+  is_active?: boolean; // Adicionado campo de controle
 }
 
 interface AuthContextType {
@@ -19,7 +27,11 @@ interface AuthContextType {
   profile: Profile | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
+  signUp: (
+    email: string,
+    password: string,
+    fullName: string
+  ) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -30,16 +42,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
-    console.log('[Auth] Setting up auth state listener');
-    
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('[Auth] Auth state changed:', event);
+    console.log("[Auth] Setting up auth state listener");
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("[Auth] Auth state changed:", event);
       setSession(session);
       setUser(session?.user ?? null);
-      
+
       if (session?.user) {
+        // Delay ligeiro para garantir consistência
         setTimeout(() => {
           fetchProfile(session.user.id);
         }, 0);
@@ -50,10 +66,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('[Auth] Got existing session:', !!session);
+      console.log("[Auth] Got existing session:", !!session);
       setSession(session);
       setUser(session?.user ?? null);
-      
+
       if (session?.user) {
         fetchProfile(session.user.id);
       } else {
@@ -65,55 +81,73 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const fetchProfile = async (userId: string) => {
-    console.log('[Auth] Fetching profile for user:', userId);
+    console.log("[Auth] Fetching profile for user:", userId);
     try {
       const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
         .maybeSingle();
 
       if (error) {
-        console.error('[Auth] Error fetching profile:', error);
+        console.error("[Auth] Error fetching profile:", error);
       } else if (data) {
-        console.log('[Auth] Profile loaded:', data.role);
+        // Lógica de Segurança - Bloqueio de Acesso
+        if (data.is_active === false) {
+          console.warn("[Auth] User is blocked/inactive. Signing out.");
+          await supabase.auth.signOut();
+          toast({
+            variant: "destructive",
+            title: "Acesso Bloqueado",
+            description:
+              "Sua conta foi desativada. Entre em contato com o administrador.",
+          });
+          return;
+        }
+
+        console.log("[Auth] Profile loaded:", data.role);
         setProfile(data as Profile);
       }
     } catch (err) {
-      console.error('[Auth] Exception fetching profile:', err);
+      console.error("[Auth] Exception fetching profile:", err);
     } finally {
       setLoading(false);
     }
   };
 
   const signIn = async (email: string, password: string) => {
-    console.log('[Auth] Signing in...');
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    console.log("[Auth] Signing in...");
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
     return { error: error as Error | null };
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
-    console.log('[Auth] Signing up...');
+    console.log("[Auth] Signing up...");
     const redirectUrl = `${window.location.origin}/`;
-    
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: redirectUrl,
-        data: { full_name: fullName }
-      }
+        data: { full_name: fullName },
+      },
     });
     return { error: error as Error | null };
   };
 
   const signOut = async () => {
-    console.log('[Auth] Signing out...');
+    console.log("[Auth] Signing out...");
     await supabase.auth.signOut();
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider
+      value={{ user, session, profile, loading, signIn, signUp, signOut }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -122,7 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 }

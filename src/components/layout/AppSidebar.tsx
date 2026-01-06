@@ -1,5 +1,5 @@
-import { useLocation, Link } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
+import { useLocation, Link } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Sidebar,
   SidebarContent,
@@ -11,9 +11,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from '@/components/ui/sidebar';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+} from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   MapPin,
   LayoutGrid,
@@ -23,29 +23,32 @@ import {
   BarChart3,
   LogOut,
   Building2,
-} from 'lucide-react';
+  Map,
+} from "lucide-react";
 
 const menuItems = {
   seller: [
-    { title: 'PDV', icon: LayoutGrid, href: '/' },
-    { title: 'Cadastrar PDV', icon: MapPin, href: '/cadastrar-pdv' },
-    { title: 'Vendas', icon: ShoppingCart, href: '/vendas' },
-    { title: 'Cadastrar Cliente', icon: UserPlus, href: '/cadastrar-cliente' },
+    { title: "PDV", icon: LayoutGrid, href: "/" },
+    { title: "Cadastrar PDV", icon: MapPin, href: "/cadastrar-pdv" },
+    { title: "Vendas", icon: ShoppingCart, href: "/vendas" },
+    { title: "Cadastrar Cliente", icon: UserPlus, href: "/cadastrar-cliente" },
   ],
   manager: [
-    { title: 'PDV', icon: LayoutGrid, href: '/' },
-    { title: 'Cadastrar PDV', icon: MapPin, href: '/cadastrar-pdv' },
-    { title: 'Vendas', icon: ShoppingCart, href: '/vendas' },
-    { title: 'Cadastrar', icon: UserPlus, href: '/cadastrar' },
-    { title: 'Equipe', icon: Users, href: '/equipe' },
-    { title: 'Relatórios', icon: BarChart3, href: '/relatorios' },
+    { title: "PDV", icon: LayoutGrid, href: "/" },
+    { title: "Distribuir Rotas", icon: Map, href: "/distribuir" }, // <--- NOVO
+    { title: "Cadastrar PDV", icon: MapPin, href: "/cadastrar-pdv" },
+    { title: "Vendas", icon: ShoppingCart, href: "/vendas" },
+    { title: "Cadastrar", icon: UserPlus, href: "/cadastrar" },
+    { title: "Equipe", icon: Users, href: "/equipe" },
+    { title: "Relatórios", icon: BarChart3, href: "/relatorios" },
   ],
   admin: [
-    { title: 'PDV', icon: LayoutGrid, href: '/' },
-    { title: 'Cadastrar PDV', icon: MapPin, href: '/cadastrar-pdv' },
-    { title: 'Cadastrar', icon: Building2, href: '/cadastrar' },
-    { title: 'Gerentes', icon: Users, href: '/gerentes' },
-    { title: 'Relatórios', icon: BarChart3, href: '/relatorios' },
+    { title: "PDV", icon: LayoutGrid, href: "/" },
+    { title: "Distribuir Rotas", icon: Map, href: "/distribuir" }, // <--- NOVO
+    { title: "Cadastrar PDV", icon: MapPin, href: "/cadastrar-pdv" },
+    { title: "Cadastrar", icon: Building2, href: "/cadastrar" },
+    { title: "Gerentes", icon: Users, href: "/gerentes" },
+    { title: "Relatórios", icon: BarChart3, href: "/relatorios" },
   ],
 };
 
@@ -53,15 +56,16 @@ export function AppSidebar() {
   const location = useLocation();
   const { profile, signOut } = useAuth();
 
-  const role = profile?.role || 'seller';
+  const role = profile?.role || "seller";
   const items = menuItems[role] || menuItems.seller;
 
-  const initials = profile?.full_name
-    ?.split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2) || 'U';
+  const initials =
+    profile?.full_name
+      ?.split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2) || "U";
 
   return (
     <Sidebar className="border-r border-sidebar-border">
@@ -91,7 +95,10 @@ export function AppSidebar() {
                     isActive={location.pathname === item.href}
                     className="h-12"
                   >
-                    <Link to={item.href} className="flex items-center gap-3 px-4">
+                    <Link
+                      to={item.href}
+                      className="flex items-center gap-3 px-4"
+                    >
                       <item.icon className="w-5 h-5" />
                       <span className="font-medium">{item.title}</span>
                     </Link>
@@ -111,8 +118,12 @@ export function AppSidebar() {
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="font-medium truncate">{profile?.full_name || 'Usuário'}</p>
-            <p className="text-xs text-muted-foreground truncate">{profile?.email}</p>
+            <p className="font-medium truncate">
+              {profile?.full_name || "Usuário"}
+            </p>
+            <p className="text-xs text-muted-foreground truncate">
+              {profile?.email}
+            </p>
           </div>
         </div>
         <Button
