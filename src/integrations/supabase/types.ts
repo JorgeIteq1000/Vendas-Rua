@@ -14,7 +14,214 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      customers: {
+        Row: {
+          cpf: string | null
+          created_at: string
+          curso_escolhido: string | null
+          email: string | null
+          endereco: string | null
+          id: string
+          nome_completo: string
+          pdv_id: string | null
+          seller_id: string | null
+          telefone: string | null
+          updated_at: string
+          valor_inscricao: number | null
+          valor_mensalidade: number | null
+        }
+        Insert: {
+          cpf?: string | null
+          created_at?: string
+          curso_escolhido?: string | null
+          email?: string | null
+          endereco?: string | null
+          id?: string
+          nome_completo: string
+          pdv_id?: string | null
+          seller_id?: string | null
+          telefone?: string | null
+          updated_at?: string
+          valor_inscricao?: number | null
+          valor_mensalidade?: number | null
+        }
+        Update: {
+          cpf?: string | null
+          created_at?: string
+          curso_escolhido?: string | null
+          email?: string | null
+          endereco?: string | null
+          id?: string
+          nome_completo?: string
+          pdv_id?: string | null
+          seller_id?: string | null
+          telefone?: string | null
+          updated_at?: string
+          valor_inscricao?: number | null
+          valor_mensalidade?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customers_pdv_id_fkey"
+            columns: ["pdv_id"]
+            isOneToOne: false
+            referencedRelation: "points_of_interest"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customers_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      points_of_interest: {
+        Row: {
+          bairro: string
+          cep: string | null
+          coordenadas: string | null
+          created_at: string
+          created_by: string | null
+          endereco: string
+          id: string
+          last_visit_at: string | null
+          nome: string
+          telefone: string | null
+          tipo: Database["public"]["Enums"]["poi_type"]
+          updated_at: string
+        }
+        Insert: {
+          bairro: string
+          cep?: string | null
+          coordenadas?: string | null
+          created_at?: string
+          created_by?: string | null
+          endereco: string
+          id?: string
+          last_visit_at?: string | null
+          nome: string
+          telefone?: string | null
+          tipo?: Database["public"]["Enums"]["poi_type"]
+          updated_at?: string
+        }
+        Update: {
+          bairro?: string
+          cep?: string | null
+          coordenadas?: string | null
+          created_at?: string
+          created_by?: string | null
+          endereco?: string
+          id?: string
+          last_visit_at?: string | null
+          nome?: string
+          telefone?: string | null
+          tipo?: Database["public"]["Enums"]["poi_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "points_of_interest_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          assigned_neighborhoods: string[] | null
+          created_at: string
+          email: string
+          full_name: string | null
+          id: string
+          manager_id: string | null
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string
+        }
+        Insert: {
+          assigned_neighborhoods?: string[] | null
+          created_at?: string
+          email: string
+          full_name?: string | null
+          id: string
+          manager_id?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+        }
+        Update: {
+          assigned_neighborhoods?: string[] | null
+          created_at?: string
+          email?: string
+          full_name?: string | null
+          id?: string
+          manager_id?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      visits: {
+        Row: {
+          checkin_time: string | null
+          checkout_time: string | null
+          collaborator_count: number | null
+          created_at: string
+          id: string
+          point_id: string
+          status: Database["public"]["Enums"]["visit_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          checkin_time?: string | null
+          checkout_time?: string | null
+          collaborator_count?: number | null
+          created_at?: string
+          id?: string
+          point_id: string
+          status?: Database["public"]["Enums"]["visit_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          checkin_time?: string | null
+          checkout_time?: string | null
+          collaborator_count?: number | null
+          created_at?: string
+          id?: string
+          point_id?: string
+          status?: Database["public"]["Enums"]["visit_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visits_point_id_fkey"
+            columns: ["point_id"]
+            isOneToOne: false
+            referencedRelation: "points_of_interest"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "visits_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +230,16 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      poi_type:
+        | "escola"
+        | "hospital"
+        | "upa"
+        | "clinica"
+        | "empresa"
+        | "comercio"
+        | "outro"
+      user_role: "admin" | "manager" | "seller"
+      visit_status: "a_visitar" | "em_rota" | "visitado" | "finalizado"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +366,18 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      poi_type: [
+        "escola",
+        "hospital",
+        "upa",
+        "clinica",
+        "empresa",
+        "comercio",
+        "outro",
+      ],
+      user_role: ["admin", "manager", "seller"],
+      visit_status: ["a_visitar", "em_rota", "visitado", "finalizado"],
+    },
   },
 } as const
