@@ -32,6 +32,8 @@ const menuItems = {
     { title: "Cadastrar PDV", icon: MapPin, href: "/cadastrar-pdv" },
     { title: "Vendas", icon: ShoppingCart, href: "/vendas" },
     { title: "Cadastrar Cliente", icon: UserPlus, href: "/cadastrar-cliente" },
+    { title: "Vendas", icon: ShoppingCart, href: "/vendas" },
+    { title: "Cadastrar Cliente", icon: UserPlus, href: "/cadastrar-cliente" },
   ],
   manager: [
     { title: "PDV", icon: LayoutGrid, href: "/" },

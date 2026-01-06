@@ -11,6 +11,8 @@ import Gerentes from "./pages/Gerentes";
 import NotFound from "./pages/NotFound";
 import ImportarEscolas from "./pages/ImportarEscolas"; // Importe a nova página
 import DistribuirRotas from "./pages/DistribuirRotas";
+import CadastrarCliente from "./pages/CadastrarCliente";
+import Vendas from "./pages/Vendas";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +33,8 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
             <Route path="/importar-escolas" element={<ImportarEscolas />} />
             <Route path="/distribuir" element={<DistribuirRotas />} />
+            <Route path="/cadastrar-cliente" element={<CadastrarCliente />} />
+            <Route path="/vendas" element={<Vendas />} />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
