@@ -225,13 +225,19 @@ export function KanbanCard({
 
     // Adiciona o termo "Brasil" para garantir que não busque ruas em outros países
     const destination = encodeURIComponent(
-      `${visit.poi.endereco}, ${visit.poi.bairro}`
+      `${visit.poi.endereco}, ${visit.poi.bairro}, Brasil`
     );
 
-    const url =
-      app === "waze"
-        ? `https://waze.com/ul?q=${destination}&navigate=yes`
-        : `https://www.google.com/maps/search/?api=1&query=${destination}`; // 👈 URL CORRIGIDA
+    let url = "";
+
+    if (app === "waze") {
+      // Link Deep do Waze
+      url = `https://waze.com/ul?q=${destination}&navigate=yes`;
+    } else {
+      // Link Universal do Google Maps (Funciona em iOS, Android e Web)
+      // dir/?api=1&destination=... força o modo de navegação "Como chegar"
+      url = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
+    }
 
     window.open(url, "_blank");
     onStatusChange(visit.id, "em_rota");
