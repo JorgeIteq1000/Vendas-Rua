@@ -219,11 +219,10 @@ export function KanbanCard({
     else if (currentStatus === "visitado") setShowFinishDialog(true);
   };
 
-  // 👇 CORREÇÃO AQUI: Link Universal do Google Maps
+  // 👇 CORREÇÃO: "Modo de Ataque" para forçar o App Nativo
   const handleStartRoute = (app: "waze" | "google") => {
     if (!visit.poi) return;
 
-    // Adiciona o termo "Brasil" para garantir que não busque ruas em outros países
     const destination = encodeURIComponent(
       `${visit.poi.endereco}, ${visit.poi.bairro}, Brasil`
     );
@@ -234,14 +233,20 @@ export function KanbanCard({
       // Link Deep do Waze
       url = `https://waze.com/ul?q=${destination}&navigate=yes`;
     } else {
-      // Link Universal do Google Maps (Funciona em iOS, Android e Web)
-      // dir/?api=1&destination=... força o modo de navegação "Como chegar"
+      // Link Universal do Google Maps Oficial (Mais seguro que o anterior)
       url = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
     }
 
-    window.open(url, "_blank");
+    // 1. Atualiza o status e fecha o modal IMEDIATAMENTE
     onStatusChange(visit.id, "em_rota");
     setShowGpsDialog(false);
+
+    // 2. Aguarda 500ms (meio segundo) para garantir que o React atualizou tudo
+    // 3. Usa location.href em vez de window.open
+    // ISSO É O QUE CONSERTA NO SAMSUNG: Ele entende como uma navegação real e chama o App.
+    setTimeout(() => {
+      window.location.href = url;
+    }, 500);
   };
 
   const handleFinalize = () => {
