@@ -18,6 +18,8 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectGroup,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -27,7 +29,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-// 👇 A CORREÇÃO ESTÁ AQUI: Adicionei FileText na lista
 import {
   ShoppingCart,
   CheckCircle,
@@ -39,7 +40,15 @@ import {
   Calendar,
   Filter,
   FileText,
+  X, // Ícone para limpar filtros
 } from "lucide-react";
+
+interface SellerProfile {
+  id: string;
+  full_name: string;
+  manager_id: string | null;
+  role: string;
+}
 
 interface Customer {
   id: string;
@@ -52,13 +61,14 @@ interface Customer {
   status: string;
   created_at: string;
   seller_id: string;
-  seller: { full_name: string };
+  seller: SellerProfile;
   pdv: { nome: string; bairro: string };
 }
 
-interface Profile {
+interface TeamMember {
   id: string;
   full_name: string;
+  role: "admin" | "manager" | "seller";
 }
 
 export default function Vendas() {
@@ -66,12 +76,14 @@ export default function Vendas() {
   const { toast } = useToast();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [sellers, setSellers] = useState<Profile[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Filtros
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedSellerId, setSelectedSellerId] = useState<string>("all");
+  const [selectedFilterId, setSelectedFilterId] = useState<string>("all");
+  const [startDate, setStartDate] = useState(""); // Novo: Data Inicial
+  const [endDate, setEndDate] = useState(""); // Novo: Data Final
   const [processingId, setProcessingId] = useState<string | null>(null);
 
   const isManagerOrAdmin =
@@ -92,10 +104,11 @@ export default function Vendas() {
     try {
       let query = supabase
         .from("profiles")
-        .select("id, full_name")
+        .select("id, full_name, role")
         .order("full_name");
+
       const { data } = await query;
-      if (data) setSellers(data as Profile[]);
+      if (data) setTeamMembers(data as TeamMember[]);
     } catch (err) {
       console.error("Erro ao carregar equipe:", err);
     }
@@ -109,7 +122,7 @@ export default function Vendas() {
         .select(
           `
           *,
-          seller:profiles(full_name),
+          seller:profiles(id, full_name, manager_id, role),
           pdv:points_of_interest(nome, bairro)
         `
         )
@@ -139,7 +152,7 @@ export default function Vendas() {
     try {
       const { error } = await supabase
         .from("customers")
-        .update({ status: "matriculado" })
+        .update({ status: "matriculado" } as any)
         .eq("id", customerId);
 
       if (error) throw error;
@@ -161,15 +174,45 @@ export default function Vendas() {
     }
   };
 
+  // 🧠 LÓGICA DE FILTRAGEM TURBINADA (Texto + Equipe + Data)
   const filteredCustomers = customers.filter((c) => {
+    // 1. Filtro de Texto
     const matchesSearch =
       c.nome_completo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.curso_escolhido.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesSeller =
-      selectedSellerId === "all" || c.seller_id === selectedSellerId;
+    // 2. Filtro de Equipe
+    let matchesFilter = true;
+    if (selectedFilterId !== "all") {
+      const filterOwner = teamMembers.find((m) => m.id === selectedFilterId);
+      if (filterOwner?.role === "manager") {
+        matchesFilter =
+          c.seller_id === selectedFilterId ||
+          c.seller?.manager_id === selectedFilterId;
+      } else {
+        matchesFilter = c.seller_id === selectedFilterId;
+      }
+    }
 
-    return matchesSearch && matchesSeller;
+    // 3. Filtro de Datas (Intervalo)
+    let matchesDate = true;
+    if (startDate || endDate) {
+      const saleDate = new Date(c.created_at);
+
+      if (startDate) {
+        // Cria data inicio do dia (00:00:00) local
+        const start = new Date(startDate + "T00:00:00");
+        if (saleDate < start) matchesDate = false;
+      }
+
+      if (endDate) {
+        // Cria data fim do dia (23:59:59) local
+        const end = new Date(endDate + "T23:59:59.999");
+        if (saleDate > end) matchesDate = false;
+      }
+    }
+
+    return matchesSearch && matchesFilter && matchesDate;
   });
 
   const exportToCSV = () => {
@@ -190,22 +233,30 @@ export default function Vendas() {
       "Parcelas",
       "Bairro",
       "Vendedor",
+      "Gerente",
       "Status",
       "Observação",
     ];
 
-    const rows = filteredCustomers.map((c) => [
-      new Date(c.created_at).toLocaleDateString("pt-BR"),
-      `"${c.nome_completo}"`,
-      `"${c.curso_escolhido}"`,
-      c.valor_inscricao.toFixed(2).replace(".", ","),
-      c.valor_mensalidade.toFixed(2).replace(".", ","),
-      c.parcelas,
-      `"${c.pdv?.bairro || "N/A"}"`,
-      `"${c.seller?.full_name || "N/A"}"`,
-      c.status,
-      `"${c.observacao || ""}"`,
-    ]);
+    const rows = filteredCustomers.map((c) => {
+      const managerName =
+        teamMembers.find((m) => m.id === c.seller?.manager_id)?.full_name ||
+        "-";
+
+      return [
+        new Date(c.created_at).toLocaleDateString("pt-BR"),
+        `"${c.nome_completo}"`,
+        `"${c.curso_escolhido}"`,
+        c.valor_inscricao.toFixed(2).replace(".", ","),
+        c.valor_mensalidade.toFixed(2).replace(".", ","),
+        c.parcelas,
+        `"${c.pdv?.bairro || "N/A"}"`,
+        `"${c.seller?.full_name || "N/A"}"`,
+        `"${managerName}"`,
+        c.status,
+        `"${c.observacao || ""}"`,
+      ];
+    });
 
     const csvContent = [
       headers.join(";"),
@@ -216,15 +267,29 @@ export default function Vendas() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute(
-      "download",
-      `relatorio_${
-        selectedSellerId === "all" ? "geral" : "individual"
-      }_${new Date().toLocaleDateString("pt-BR").replace(/\//g, "-")}.csv`
-    );
+
+    const filterName =
+      selectedFilterId === "all"
+        ? "geral"
+        : teamMembers
+            .find((m) => m.id === selectedFilterId)
+            ?.full_name.replace(/\s+/g, "_") || "relatorio";
+
+    const dateSuffix = startDate ? `_de_${startDate}` : "";
+
+    link.setAttribute("download", `relatorio_${filterName}${dateSuffix}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const managers = teamMembers.filter((m) => m.role === "manager");
+  const sellers = teamMembers.filter((m) => m.role === "seller");
+
+  // Função para limpar filtros de data
+  const clearDates = () => {
+    setStartDate("");
+    setEndDate("");
   };
 
   return (
@@ -269,40 +334,96 @@ export default function Vendas() {
           </div>
         </div>
 
-        <div className="flex flex-col md:flex-row gap-4 bg-card p-4 rounded-lg border shadow-sm">
-          <div className="flex-1 flex items-center gap-2 bg-muted/50 px-3 rounded-md">
-            <Search className="w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por aluno ou curso..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="border-none shadow-none focus-visible:ring-0 bg-transparent h-10"
-            />
+        {/* BARRA DE FILTROS APRIMORADA */}
+        <div className="flex flex-col gap-4 bg-card p-4 rounded-lg border shadow-sm">
+          <div className="flex flex-col md:flex-row gap-4">
+            {/* 1. Busca Texto */}
+            <div className="flex-1 flex items-center gap-2 bg-muted/50 px-3 rounded-md">
+              <Search className="w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por aluno ou curso..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="border-none shadow-none focus-visible:ring-0 bg-transparent h-10"
+              />
+            </div>
+
+            {/* 2. Filtro de Vendedor (Admin/Manager) */}
+            {isManagerOrAdmin && (
+              <div className="w-full md:w-64">
+                <Select
+                  value={selectedFilterId}
+                  onValueChange={setSelectedFilterId}
+                >
+                  <SelectTrigger className="h-10">
+                    <div className="flex items-center gap-2">
+                      <Filter className="w-4 h-4 text-muted-foreground" />
+                      <SelectValue placeholder="Filtrar Relatório" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos (Geral)</SelectItem>
+
+                    {managers.length > 0 && (
+                      <SelectGroup>
+                        <SelectLabel>Gerentes (Equipes)</SelectLabel>
+                        {managers.map((manager) => (
+                          <SelectItem key={manager.id} value={manager.id}>
+                            {manager.full_name || "Sem nome"}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    )}
+
+                    {sellers.length > 0 && (
+                      <SelectGroup>
+                        <SelectLabel>Vendedores (Individual)</SelectLabel>
+                        {sellers.map((seller) => (
+                          <SelectItem key={seller.id} value={seller.id}>
+                            {seller.full_name || "Sem nome"}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
-          {isManagerOrAdmin && (
-            <div className="w-full md:w-64">
-              <Select
-                value={selectedSellerId}
-                onValueChange={setSelectedSellerId}
-              >
-                <SelectTrigger className="h-10">
-                  <div className="flex items-center gap-2">
-                    <Filter className="w-4 h-4 text-muted-foreground" />
-                    <SelectValue placeholder="Filtrar por Vendedor" />
-                  </div>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os Vendedores</SelectItem>
-                  {sellers.map((seller) => (
-                    <SelectItem key={seller.id} value={seller.id}>
-                      {seller.full_name || "Sem nome"}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {/* 3. Filtro de Datas */}
+          <div className="flex flex-col sm:flex-row items-center gap-4 pt-2 border-t border-dashed">
+            <span className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              Período:
+            </span>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="h-9 w-full sm:w-40"
+              />
+              <span className="text-muted-foreground text-xs">até</span>
+              <Input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="h-9 w-full sm:w-40"
+              />
+              {(startDate || endDate) && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={clearDates}
+                  className="h-9 w-9 shrink-0"
+                  title="Limpar datas"
+                >
+                  <X className="w-4 h-4 text-muted-foreground hover:text-destructive" />
+                </Button>
+              )}
             </div>
-          )}
+          </div>
         </div>
 
         <Card>
@@ -335,7 +456,7 @@ export default function Vendas() {
                       colSpan={8}
                       className="h-24 text-center text-muted-foreground"
                     >
-                      Nenhum registro encontrado.
+                      Nenhum registro encontrado neste período.
                     </TableCell>
                   </TableRow>
                 ) : (

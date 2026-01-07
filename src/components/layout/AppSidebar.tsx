@@ -24,6 +24,7 @@ import {
   LogOut,
   Building2,
   FileText,
+  Map, // 👈 IMPORTANTE: O ícone Map voltou!
 } from "lucide-react";
 
 const menuItems = {
@@ -35,17 +36,18 @@ const menuItems = {
   ],
   manager: [
     { title: "PDV", icon: LayoutGrid, href: "/" },
+    { title: "Distribuir Rotas", icon: Map, href: "/distribuir" }, // 👈 VOLTOU AQUI
     { title: "Cadastrar PDV", icon: MapPin, href: "/cadastrar-pdv" },
     { title: "Vendas", icon: ShoppingCart, href: "/vendas" },
+    { title: "Cadastrar", icon: UserPlus, href: "/cadastrar-cliente" }, // Ajustei para apontar para o cadastro de cliente se ele for vender
     { title: "Equipe", icon: Users, href: "/equipe" },
-    // Gerente acessa relatórios na própria tela de vendas ou rota especifica se houver
   ],
   admin: [
     { title: "PDV", icon: LayoutGrid, href: "/" },
+    { title: "Distribuir Rotas", icon: Map, href: "/distribuir" }, // 👈 VOLTOU AQUI
     { title: "Cadastrar PDV", icon: MapPin, href: "/cadastrar-pdv" },
-    { title: "Cadastrar", icon: Building2, href: "/cadastrar" },
+    { title: "Cadastrar", icon: Building2, href: "/cadastrar" }, // Mantive seu link de cadastro genérico se houver
     { title: "Gerentes", icon: Users, href: "/gerentes" },
-    // MUDANÇA AQUI: Relatórios agora aponta para /vendas onde temos a exportação
     { title: "Relatórios de Vendas", icon: FileText, href: "/vendas" },
   ],
 };
