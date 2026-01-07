@@ -2,7 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
-import { VitePWA } from "vite-plugin-pwa"; // 👈 Importamos o Mágico
+import { VitePWA } from "vite-plugin-pwa";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -13,27 +13,34 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     mode === "development" && componentTagger(),
-    // 👇 Configuração do PWA
+    // 👇 Configuração PWA Corrigida
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.ico", "apple-touch-icon.png", "masked-icon.svg"],
+      // Removi arquivos que você não tem para evitar erros 404
+      includeAssets: ["favicon.ico", "pwa-192x192.png", "pwa-512x512.png"],
       manifest: {
         name: "Vendas Externas - Sistema de Gestão",
-        short_name: "Vendas Externas",
+        short_name: "Vendas Rua", // Nome curto para ficar embaixo do ícone
         description: "Sistema de gestão de vendas externas e rotas.",
         theme_color: "#ffffff",
         background_color: "#ffffff",
-        display: "standalone", // Isso faz parecer App nativo (sem barra de navegador)
+        display: "standalone",
+        orientation: "portrait", // Força abrir em pé
+        scope: "/", // 👈 OBRIGATÓRIO
+        start_url: "/", // 👈 OBRIGATÓRIO
+        id: "/", // 👈 OBRIGATÓRIO
         icons: [
           {
-            src: "pwa-192x192.png", // Você precisará criar essas imagens depois
+            src: "pwa-192x192.png",
             sizes: "192x192",
             type: "image/png",
+            purpose: "any maskable", // Ajuda o Android a arredondar o ícone
           },
           {
             src: "pwa-512x512.png",
             sizes: "512x512",
             type: "image/png",
+            purpose: "any maskable",
           },
         ],
       },
