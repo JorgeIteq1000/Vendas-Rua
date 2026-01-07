@@ -193,7 +193,9 @@ export function KanbanBoard() {
       toast({
         title: "Rota Otimizada! ⚡",
         description: `Visitas reordenadas a partir da sua posição atual.`,
-        className: "bg-green-50 border-green-200",
+        // 👇 AQUI ESTÁ A CORREÇÃO: Adicionei 'text-emerald-900' para garantir letra escura
+        className:
+          "bg-emerald-50 border-emerald-200 text-emerald-900 dark:bg-emerald-900 dark:text-white",
       });
     } catch (error) {
       console.error("Erro ao otimizar:", error);

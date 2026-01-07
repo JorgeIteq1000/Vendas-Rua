@@ -506,11 +506,15 @@ export default function Vendas() {
                               <PopoverTrigger>
                                 <Info className="w-4 h-4 text-blue-500 cursor-pointer hover:text-blue-700" />
                               </PopoverTrigger>
-                              <PopoverContent className="w-64 text-sm p-3 bg-white">
-                                <p className="font-semibold mb-1">
-                                  Observações:
-                                </p>
-                                {sale.observacao}
+                              <PopoverContent className="w-80 p-4 text-sm bg-white text-zinc-900 shadow-xl border border-zinc-200 dark:bg-zinc-900 dark:text-zinc-100 dark:border-zinc-700">
+                                <div className="space-y-2">
+                                  <h4 className="font-semibold leading-none border-b pb-2 mb-2">
+                                    Observações
+                                  </h4>
+                                  <p className="text-muted-foreground leading-relaxed">
+                                    {sale.observacao}
+                                  </p>
+                                </div>
                               </PopoverContent>
                             </Popover>
                           )}
