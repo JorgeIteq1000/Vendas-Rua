@@ -4,11 +4,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useToast } from "@/hooks/use-toast";
 import { KanbanColumn } from "./KanbanColumn";
-import { Loader2, Zap } from "lucide-react"; // Adicionei o Zap
+import { Loader2, Zap, Navigation } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type VisitStatus = "a_visitar" | "em_rota" | "visitado" | "finalizado";
 
+// ... (Mantenha as interfaces POI, Profile, Visit iguais às anteriores) ...
 interface POI {
   id: string;
   nome: string;
@@ -43,11 +44,13 @@ const columns: { status: VisitStatus; title: string; color: string }[] = [
 
 export function KanbanBoard() {
   const { user, profile } = useAuth();
-  const { calculateDistance, location } = useGeolocation(); // Pegamos location também
+  // 👇 Pegamos a nova função getCurrentLocation
+  const { calculateDistance, getCurrentLocation } = useGeolocation();
   const { toast } = useToast();
 
   const [visits, setVisits] = useState<Visit[]>([]);
   const [loading, setLoading] = useState(true);
+  const [optimizing, setOptimizing] = useState(false); // Estado para o loading do botão
 
   useEffect(() => {
     if (user && profile) {
@@ -109,9 +112,6 @@ export function KanbanBoard() {
     newStatus: VisitStatus,
     collaboratorCount?: number
   ) => {
-    // ... (mesma lógica de antes, mantive simplificado aqui para focar no novo recurso)
-    // Se precisar do código completo da validação de rota, me avise que eu recoloco,
-    // mas o foco aqui é a função abaixo optimizeRoute
     try {
       const updates: any = { status: newStatus };
       if (newStatus === "em_rota")
@@ -145,42 +145,62 @@ export function KanbanBoard() {
     }
   };
 
-  // 🚀 OTIMIZADOR DE ROTA INTELIGENTE
-  const optimizeRoute = () => {
-    if (!location) {
-      toast({
-        variant: "destructive",
-        title: "GPS Indisponível",
-        description: "Ative a localização para otimizar.",
+  // 🚀 OTIMIZADOR DE ROTA INTELIGENTE 2.0 (Com Força Bruta de GPS)
+  const optimizeRoute = async () => {
+    setOptimizing(true);
+    try {
+      // 1. Força a busca da localização atual (Isso acorda o GPS do celular)
+      const location = await getCurrentLocation();
+
+      console.log("[Kanban] GPS Capturado:", location);
+
+      // 2. Separa as visitas
+      const todoVisits = visits.filter((v) => v.status === "a_visitar");
+      const otherVisits = visits.filter((v) => v.status !== "a_visitar");
+
+      // 3. Função auxiliar para calcular distância baseada na nova localização
+      const getDist = (coordsStr: string | null) => {
+        if (!coordsStr || !location) return 99999;
+
+        const [lat2Str, lon2Str] = coordsStr.split(",").map((s) => s.trim());
+        const lat2 = parseFloat(lat2Str);
+        const lon2 = parseFloat(lon2Str);
+
+        // Haversine simples
+        const R = 6371;
+        const dLat = (lat2 - location.latitude) * (Math.PI / 180);
+        const dLon = (lon2 - location.longitude) * (Math.PI / 180);
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(location.latitude * (Math.PI / 180)) *
+            Math.cos(lat2 * (Math.PI / 180)) *
+            Math.sin(dLon / 2) *
+            Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+      };
+
+      // 4. Ordena
+      const sortedTodo = todoVisits.sort((a, b) => {
+        const distA = getDist(a.poi?.coordenadas || null);
+        const distB = getDist(b.poi?.coordenadas || null);
+        return distA - distB;
       });
-      return;
+
+      // 5. Atualiza
+      setVisits([...sortedTodo, ...otherVisits]);
+
+      toast({
+        title: "Rota Otimizada! ⚡",
+        description: `Visitas reordenadas a partir da sua posição atual.`,
+        className: "bg-green-50 border-green-200",
+      });
+    } catch (error) {
+      console.error("Erro ao otimizar:", error);
+      // O toast de erro já é disparado dentro do hook getCurrentLocation
+    } finally {
+      setOptimizing(false);
     }
-
-    console.log("[Kanban] Otimizando rota baseada em:", location);
-
-    // Separa as visitas "A Visitar" das outras
-    const todoVisits = visits.filter((v) => v.status === "a_visitar");
-    const otherVisits = visits.filter((v) => v.status !== "a_visitar");
-
-    // Ordena "A Visitar" pela distância
-    const sortedTodo = todoVisits.sort((a, b) => {
-      const distA = a.poi?.coordenadas
-        ? calculateDistance(a.poi.coordenadas) || 9999
-        : 9999;
-      const distB = b.poi?.coordenadas
-        ? calculateDistance(b.poi.coordenadas) || 9999
-        : 9999;
-      return distA - distB;
-    });
-
-    // Atualiza o estado visualmente
-    setVisits([...sortedTodo, ...otherVisits]);
-
-    toast({
-      title: "Rota Otimizada! ⚡",
-      description: "Suas visitas foram reordenadas por proximidade.",
-      className: "bg-green-50 border-green-200",
-    });
   };
 
   if (loading) {
@@ -193,7 +213,6 @@ export function KanbanBoard() {
 
   return (
     <div className="space-y-4">
-      {/* Barra de Ações */}
       <div className="flex items-center justify-between bg-muted/20 p-3 rounded-lg border border-dashed">
         <div className="text-sm text-muted-foreground hidden md:block">
           {profile?.role !== "seller" ? (
@@ -208,19 +227,24 @@ export function KanbanBoard() {
         </div>
 
         <div className="flex gap-2 w-full md:w-auto">
-          {/* Botão de Otimizar */}
           <Button
             variant="default"
             size="sm"
             onClick={optimizeRoute}
-            className="flex-1 md:flex-none gap-2 bg-yellow-500 hover:bg-yellow-600 text-black font-semibold"
+            disabled={optimizing}
+            className="flex-1 md:flex-none gap-2 bg-yellow-500 hover:bg-yellow-600 text-black font-semibold transition-all active:scale-95"
           >
-            <Zap className="w-4 h-4 fill-current" />
-            Otimizar Rota
+            {optimizing ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Zap className="w-4 h-4 fill-current" />
+            )}
+            {optimizing ? "Buscando Satélites..." : "Otimizar Rota"}
           </Button>
 
           <Button variant="ghost" size="sm" onClick={loadVisits}>
-            Atualizar
+            <Navigation className="w-4 h-4 mr-2 md:hidden" />
+            <span className="hidden md:inline">Atualizar</span>
           </Button>
         </div>
       </div>

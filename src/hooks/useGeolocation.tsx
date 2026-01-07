@@ -1,119 +1,115 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from "react";
+import { useToast } from "./use-toast";
 
 interface Coordinates {
   latitude: number;
   longitude: number;
 }
 
-interface GeolocationState {
-  coordinates: Coordinates | null;
-  error: string | null;
-  loading: boolean;
-}
+export const useGeolocation = () => {
+  const [location, setLocation] = useState<Coordinates | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
-export function useGeolocation() {
-  const [state, setState] = useState<GeolocationState>({
-    coordinates: null,
-    error: null,
-    loading: true,
-  });
+  // Opções "Agressivas" para Mobile
+  const geoOptions = {
+    enableHighAccuracy: true, // Força o uso do GPS Hardware
+    timeout: 20000, // Espera até 20s (celular pode demorar pra triangular)
+    maximumAge: 0, // Não aceita cache, quer a posição AGORA
+  };
 
   useEffect(() => {
-    console.log('[Geo] Requesting geolocation permission...');
-    
     if (!navigator.geolocation) {
-      console.log('[Geo] Geolocation not supported');
-      setState({
-        coordinates: null,
-        error: 'Geolocalização não suportada pelo navegador',
-        loading: false,
-      });
+      setError("Geolocalização não suportada");
       return;
     }
 
-    const watchId = navigator.geolocation.watchPosition(
+    // Monitoramento passivo (apenas para ter um valor inicial se possível)
+    const watcher = navigator.geolocation.watchPosition(
       (position) => {
-        console.log('[Geo] Position updated:', position.coords.latitude, position.coords.longitude);
-        setState({
-          coordinates: {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          },
-          error: null,
-          loading: false,
+        setLocation({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
         });
       },
-      (error) => {
-        console.log('[Geo] Error getting position:', error.message);
-        let errorMessage = 'Erro ao obter localização';
-        
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage = 'Permissão de localização negada';
-            break;
-          case error.POSITION_UNAVAILABLE:
-            errorMessage = 'Localização indisponível';
-            break;
-          case error.TIMEOUT:
-            errorMessage = 'Tempo esgotado ao obter localização';
-            break;
-        }
-        
-        setState({
-          coordinates: null,
-          error: errorMessage,
-          loading: false,
-        });
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 30000,
-      }
+      (err) => console.log("WatchPosition error (ignorado):", err),
+      geoOptions
     );
 
-    return () => {
-      console.log('[Geo] Cleaning up geolocation watch');
-      navigator.geolocation.clearWatch(watchId);
-    };
+    return () => navigator.geolocation.clearWatch(watcher);
   }, []);
 
-  const calculateDistance = useCallback((targetCoords: string): number | null => {
-    if (!state.coordinates || !targetCoords) {
-      console.log('[Geo] Cannot calculate distance - missing coordinates');
-      return null;
-    }
-
-    try {
-      const [targetLat, targetLng] = targetCoords.split(',').map(c => parseFloat(c.trim()));
-      
-      if (isNaN(targetLat) || isNaN(targetLng)) {
-        console.log('[Geo] Invalid target coordinates:', targetCoords);
-        return null;
+  // 🚀 FUNÇÃO MANUAL PROMISSORA (A Mágica acontece aqui)
+  const getCurrentLocation = (): Promise<Coordinates> => {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        const msg = "Geolocalização não suportada pelo navegador.";
+        toast({ variant: "destructive", title: "Erro", description: msg });
+        reject(new Error(msg));
+        return;
       }
 
-      const R = 6371;
-      const dLat = toRad(targetLat - state.coordinates.latitude);
-      const dLon = toRad(targetLng - state.coordinates.longitude);
-      const lat1 = toRad(state.coordinates.latitude);
-      const lat2 = toRad(targetLat);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const newLoc = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          };
+          setLocation(newLoc); // Atualiza estado global
+          resolve(newLoc); // Devolve para quem chamou
+        },
+        (err) => {
+          let msg = "Erro desconhecido de GPS.";
+          switch (err.code) {
+            case 1:
+              msg = "Permissão negada. Ative a localização no navegador.";
+              break;
+            case 2:
+              msg = "Sinal de GPS indisponível. Vá para céu aberto.";
+              break;
+            case 3:
+              msg = "O GPS demorou muito para responder.";
+              break;
+          }
+          toast({
+            variant: "destructive",
+            title: "Erro de GPS",
+            description: msg,
+          });
+          setError(msg);
+          reject(err);
+        },
+        geoOptions
+      );
+    });
+  };
 
-      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
+  const calculateDistance = (targetCoords: string | null) => {
+    if (!location || !targetCoords) return null;
+
+    try {
+      const [lat2Str, lon2Str] = targetCoords.split(",").map((s) => s.trim());
+      const lat2 = parseFloat(lat2Str);
+      const lon2 = parseFloat(lon2Str);
+
+      if (isNaN(lat2) || isNaN(lon2)) return null;
+
+      const R = 6371; // Raio da Terra em km
+      const dLat = (lat2 - location.latitude) * (Math.PI / 180);
+      const dLon = (lon2 - location.longitude) * (Math.PI / 180);
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(location.latitude * (Math.PI / 180)) *
+          Math.cos(lat2 * (Math.PI / 180)) *
+          Math.sin(dLon / 2) *
+          Math.sin(dLon / 2);
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      const distance = R * c;
-
-      console.log('[Geo] Distance calculated:', distance.toFixed(2), 'km');
-      return Math.round(distance * 100) / 100;
-    } catch (err) {
-      console.log('[Geo] Error calculating distance:', err);
+      return R * c; // Distância em km
+    } catch (e) {
+      console.error("Erro ao calcular distância:", e);
       return null;
     }
-  }, [state.coordinates]);
+  };
 
-  return { ...state, calculateDistance };
-}
-
-function toRad(degrees: number): number {
-  return degrees * (Math.PI / 180);
-}
+  return { location, error, calculateDistance, getCurrentLocation };
+};
