@@ -12,6 +12,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -24,7 +25,7 @@ import {
   LogOut,
   Building2,
   FileText,
-  Map, // 👈 IMPORTANTE: O ícone Map voltou!
+  Map, // 👈 Ícone Map mantido
 } from "lucide-react";
 
 const menuItems = {
@@ -36,21 +37,21 @@ const menuItems = {
   ],
   manager: [
     { title: "PDV", icon: LayoutGrid, href: "/" },
-    { title: "Distribuir Rotas", icon: Map, href: "/distribuir" }, // 👈 VOLTOU AQUI
+    { title: "Distribuir Rotas", icon: Map, href: "/distribuir" },
     { title: "Cadastrar PDV", icon: MapPin, href: "/cadastrar-pdv" },
     { title: "Vendas", icon: ShoppingCart, href: "/vendas" },
-    { title: "Cadastrar", icon: UserPlus, href: "/cadastrar-cliente" }, // Ajustei para apontar para o cadastro de cliente se ele for vender
+    { title: "Cadastrar", icon: UserPlus, href: "/cadastrar-cliente" },
     { title: "Equipe", icon: Users, href: "/equipe" },
-    { title: "Ver Equipe (GPS)", icon: Map, href: "/ver-vendedores" }, // 👈 NOVO
+    { title: "Ver Equipe (GPS)", icon: Map, href: "/ver-vendedores" },
   ],
   admin: [
     { title: "PDV", icon: LayoutGrid, href: "/" },
-    { title: "Distribuir Rotas", icon: Map, href: "/distribuir" }, // 👈 VOLTOU AQUI
+    { title: "Distribuir Rotas", icon: Map, href: "/distribuir" },
     { title: "Cadastrar PDV", icon: MapPin, href: "/cadastrar-pdv" },
     { title: "Gerentes", icon: Users, href: "/gerentes" },
     { title: "Relatórios de Vendas", icon: FileText, href: "/vendas" },
-    { title: "Mapa de Calor", icon: Map, href: "/mapa" }, // NOVO
-    { title: "Ver Equipe (GPS)", icon: Map, href: "/ver-vendedores" }, // 👈 NOVO
+    { title: "Mapa de Calor", icon: Map, href: "/mapa" },
+    { title: "Ver Equipe (GPS)", icon: Map, href: "/ver-vendedores" },
   ],
 };
 
@@ -59,6 +60,7 @@ export function AppSidebar() {
   const { profile, signOut } = useAuth();
 
   const role = profile?.role || "seller";
+  // @ts-ignore
   const items = menuItems[role] || menuItems.seller;
 
   const initials =
@@ -96,7 +98,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => (
+              {items.map((item: any) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
@@ -113,6 +115,9 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+
+              {/* 👇 AQUI ESTÁ O AJUSTE: Botão de Instalar App */}
+              <InstallPrompt />
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
