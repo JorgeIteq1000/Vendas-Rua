@@ -49,6 +49,7 @@ const menuItems = {
     { title: "Cadastrar", icon: Building2, href: "/cadastrar" }, // Mantive seu link de cadastro genérico se houver
     { title: "Gerentes", icon: Users, href: "/gerentes" },
     { title: "Relatórios de Vendas", icon: FileText, href: "/vendas" },
+    { title: "Mapa de Calor", icon: Map, href: "/mapa" }, // NOVO
   ],
 };
 
