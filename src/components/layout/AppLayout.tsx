@@ -65,10 +65,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
         <AppSidebar />
-        <main className="flex-1 p-4 overflow-auto relative w-full">
+
+        {/* 👇 AQUI O AJUSTE: 'pt-16' no mobile, 'md:pt-4' no desktop */}
+        <main className="flex-1 p-4 pt-16 md:p-4 overflow-auto relative w-full">
           <div className="absolute top-4 left-4 z-50 md:hidden">
             <SidebarTrigger />
           </div>
+
           {children}
         </main>
       </div>
