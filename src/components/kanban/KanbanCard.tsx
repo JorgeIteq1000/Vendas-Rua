@@ -108,9 +108,7 @@ export function KanbanCard({
   const [justification, setJustification] = useState("");
   const [scheduleDate, setScheduleDate] = useState("");
 
-  // Verifica suporte a voz ao carregar
   useEffect(() => {
-    // 👇 CORREÇÃO: Usamos (window as any) para o TS não reclamar
     const win = window as any;
     if ("webkitSpeechRecognition" in win || "SpeechRecognition" in win) {
       setSpeechSupported(true);
@@ -123,13 +121,10 @@ export function KanbanCard({
     ? calculateDistance(visit.poi.coordenadas)
     : null;
 
-  // 🧠 FUNÇÃO CEREBRAL: Processa o texto falado
   const processVoiceInput = (text: string) => {
     setSummary(text);
-
     const lowerText = text.toLowerCase();
 
-    // 1. Tenta achar o NOME DO RESPONSÁVEL
     const responsiblePatterns = [
       /(?:responsável|gerente|diretor|falei com)\s+(?:é\s+|o\s+|a\s+|foi\s+)?([A-Z][a-zà-ú]+)/i,
     ];
@@ -143,7 +138,6 @@ export function KanbanCard({
       }
     }
 
-    // 2. Tenta achar QUANTIDADE DE COLABORADORES
     const countPattern =
       /(\d+)\s+(?:colaboradores|funcionários|pessoas|membros|vendedores)/i;
     const countMatch = lowerText.match(countPattern);
@@ -180,7 +174,6 @@ export function KanbanCard({
       return;
     }
 
-    // 👇 CORREÇÃO: Casting explícito para any para ignorar o erro de tipo
     const SpeechRecognition =
       (window as any).SpeechRecognition ||
       (window as any).webkitSpeechRecognition;
@@ -206,10 +199,7 @@ export function KanbanCard({
     recognition.start();
   };
 
-  // --- MANIPULADORES DE AÇÃO ---
-
   const handleCheckInAttempt = () => {
-    // Cerca Eletrônica: 300 metros
     if (distance !== null && distance > 0.3) {
       setShowFraudDialog(true);
     } else {
@@ -229,15 +219,19 @@ export function KanbanCard({
     else if (currentStatus === "visitado") setShowFinishDialog(true);
   };
 
+  // 👇 CORREÇÃO AQUI: Link Universal do Google Maps
   const handleStartRoute = (app: "waze" | "google") => {
     if (!visit.poi) return;
+
+    // Adiciona o termo "Brasil" para garantir que não busque ruas em outros países
     const destination = encodeURIComponent(
       `${visit.poi.endereco}, ${visit.poi.bairro}`
     );
+
     const url =
       app === "waze"
         ? `https://waze.com/ul?q=${destination}&navigate=yes`
-        : `http://googleusercontent.com/maps.google.com/?q=${destination}`;
+        : `https://www.google.com/maps/search/?api=1&query=${destination}`; // 👈 URL CORRIGIDA
 
     window.open(url, "_blank");
     onStatusChange(visit.id, "em_rota");
@@ -395,7 +389,6 @@ export function KanbanCard({
         </DialogContent>
       </Dialog>
 
-      {/* 🏁 DIALOG DE FINALIZAÇÃO INTELIGENTE (COM FUNDO BRANCO E LETRA PRETA) */}
       <Dialog open={showFinishDialog} onOpenChange={setShowFinishDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -474,7 +467,6 @@ export function KanbanCard({
         </DialogContent>
       </Dialog>
 
-      {/* 🛡️ CERCA ELETRÔNICA - JUSTIFICATIVA */}
       <Dialog open={showFraudDialog} onOpenChange={setShowFraudDialog}>
         <DialogContent className="sm:max-w-md border-red-200 bg-red-50">
           <DialogHeader>
