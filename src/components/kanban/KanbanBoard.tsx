@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 
 type VisitStatus = "a_visitar" | "em_rota" | "visitado" | "finalizado";
 
-// ... (Mantenha as interfaces POI, Profile, Visit iguais às anteriores) ...
 interface POI {
   id: string;
   nome: string;
@@ -31,6 +30,7 @@ interface Visit {
   collaborator_count: number | null;
   checkin_time: string | null;
   checkout_time: string | null;
+  scheduled_for: string | null; // Novo campo de agendamento
   poi: POI | null;
   assignee: Profile | null;
 }
@@ -44,13 +44,13 @@ const columns: { status: VisitStatus; title: string; color: string }[] = [
 
 export function KanbanBoard() {
   const { user, profile } = useAuth();
-  // 👇 Pegamos a nova função getCurrentLocation
-  const { calculateDistance, getCurrentLocation } = useGeolocation();
+  // Pegamos location (estado) e getCurrentLocation (função manual)
+  const { calculateDistance, getCurrentLocation, location } = useGeolocation();
   const { toast } = useToast();
 
   const [visits, setVisits] = useState<Visit[]>([]);
   const [loading, setLoading] = useState(true);
-  const [optimizing, setOptimizing] = useState(false); // Estado para o loading do botão
+  const [optimizing, setOptimizing] = useState(false); // Loading do botão otimizar
 
   useEffect(() => {
     if (user && profile) {
@@ -81,7 +81,7 @@ export function KanbanBoard() {
         .from("visits")
         .select(
           `
-          id, point_id, user_id, status, collaborator_count, checkin_time, checkout_time,
+          id, point_id, user_id, status, collaborator_count, checkin_time, checkout_time, scheduled_for,
           poi:points_of_interest(id, nome, endereco, bairro, tipo, coordenadas),
           assignee:profiles(full_name)
         `
@@ -110,15 +110,16 @@ export function KanbanBoard() {
   const handleStatusChange = async (
     visitId: string,
     newStatus: VisitStatus,
-    collaboratorCount?: number
+    extraData: any = {}
   ) => {
     try {
-      const updates: any = { status: newStatus };
+      const updates: any = { status: newStatus, ...extraData };
+
       if (newStatus === "em_rota")
         updates.checkin_time = new Date().toISOString();
       else if (newStatus === "finalizado") {
         updates.checkout_time = new Date().toISOString();
-        updates.collaborator_count = collaboratorCount;
+        // collaborator_count já vem no extraData se for o caso
       }
 
       const { error } = await supabase
@@ -133,8 +134,8 @@ export function KanbanBoard() {
         )
       );
       toast({
-        title: "Status atualizado",
-        description: `Visita movida para ${newStatus}`,
+        title: "Atualizado",
+        description: "Status alterado com sucesso.",
       });
     } catch (err) {
       toast({
@@ -145,34 +146,65 @@ export function KanbanBoard() {
     }
   };
 
-  // 🚀 OTIMIZADOR DE ROTA INTELIGENTE 2.0 (Com Força Bruta de GPS)
+  // 📅 FUNÇÃO DE AGENDAR (Snooze)
+  const handleSchedule = async (visitId: string, date: Date) => {
+    try {
+      const { error } = await supabase
+        .from("visits")
+        .update({ scheduled_for: date.toISOString(), status: "a_visitar" }) // Reseta status e define data
+        .eq("id", visitId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Agendado!",
+        description: "Visita programada com sucesso.",
+      });
+      // O realtime deve atualizar, mas forçamos recarga local pra garantir feedback imediato visual se precisar
+      setVisits((prev) =>
+        prev.map((v) =>
+          v.id === visitId
+            ? { ...v, scheduled_for: date.toISOString(), status: "a_visitar" }
+            : v
+        )
+      );
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Falha ao agendar.",
+      });
+    }
+  };
+
+  // 🚀 OTIMIZADOR DE ROTA INTELIGENTE
   const optimizeRoute = async () => {
     setOptimizing(true);
     try {
       // 1. Força a busca da localização atual (Isso acorda o GPS do celular)
-      const location = await getCurrentLocation();
+      const currentLocation = await getCurrentLocation();
 
-      console.log("[Kanban] GPS Capturado:", location);
+      console.log("[Kanban] GPS Capturado para Otimização:", currentLocation);
 
       // 2. Separa as visitas
       const todoVisits = visits.filter((v) => v.status === "a_visitar");
       const otherVisits = visits.filter((v) => v.status !== "a_visitar");
 
-      // 3. Função auxiliar para calcular distância baseada na nova localização
+      // 3. Função auxiliar local
       const getDist = (coordsStr: string | null) => {
-        if (!coordsStr || !location) return 99999;
+        if (!coordsStr || !currentLocation) return 99999;
 
         const [lat2Str, lon2Str] = coordsStr.split(",").map((s) => s.trim());
         const lat2 = parseFloat(lat2Str);
         const lon2 = parseFloat(lon2Str);
 
-        // Haversine simples
         const R = 6371;
-        const dLat = (lat2 - location.latitude) * (Math.PI / 180);
-        const dLon = (lon2 - location.longitude) * (Math.PI / 180);
+        const dLat = (lat2 - currentLocation.latitude) * (Math.PI / 180);
+        const dLon = (lon2 - currentLocation.longitude) * (Math.PI / 180);
         const a =
           Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-          Math.cos(location.latitude * (Math.PI / 180)) *
+          Math.cos(currentLocation.latitude * (Math.PI / 180)) *
             Math.cos(lat2 * (Math.PI / 180)) *
             Math.sin(dLon / 2) *
             Math.sin(dLon / 2);
@@ -187,23 +219,37 @@ export function KanbanBoard() {
         return distA - distB;
       });
 
-      // 5. Atualiza
+      // 5. Atualiza estado
       setVisits([...sortedTodo, ...otherVisits]);
 
       toast({
         title: "Rota Otimizada! ⚡",
         description: `Visitas reordenadas a partir da sua posição atual.`,
-        // 👇 AQUI ESTÁ A CORREÇÃO: Adicionei 'text-emerald-900' para garantir letra escura
         className:
           "bg-emerald-50 border-emerald-200 text-emerald-900 dark:bg-emerald-900 dark:text-white",
       });
     } catch (error) {
       console.error("Erro ao otimizar:", error);
-      // O toast de erro já é disparado dentro do hook getCurrentLocation
+      // Toast de erro já tratado no hook
     } finally {
       setOptimizing(false);
     }
   };
+
+  // 👁️ FILTRO DE EXIBIÇÃO: Esconde visitas agendadas para o futuro
+  const visibleVisits = visits.filter((v) => {
+    // Se não tem data agendada, mostra sempre
+    if (!v.scheduled_for) return true;
+
+    // Se tem data, verifica se é Hoje ou Passado
+    const scheduleDate = new Date(v.scheduled_for);
+    scheduleDate.setHours(0, 0, 0, 0);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return scheduleDate <= today;
+  });
 
   if (loading) {
     return (
@@ -215,6 +261,7 @@ export function KanbanBoard() {
 
   return (
     <div className="space-y-4">
+      {/* Barra de Ações */}
       <div className="flex items-center justify-between bg-muted/20 p-3 rounded-lg border border-dashed">
         <div className="text-sm text-muted-foreground hidden md:block">
           {profile?.role !== "seller" ? (
@@ -258,9 +305,13 @@ export function KanbanBoard() {
             title={column.title}
             status={column.status}
             color={column.color}
-            visits={visits.filter((v) => v.status === column.status)}
+            // Usa visibleVisits para filtrar o que está agendado pro futuro
+            visits={visibleVisits.filter((v) => v.status === column.status)}
             onStatusChange={handleStatusChange}
             calculateDistance={calculateDistance}
+            // Passa a localização e a função de agendar para o Card
+            userLocation={location}
+            onSchedule={handleSchedule}
           />
         ))}
       </div>

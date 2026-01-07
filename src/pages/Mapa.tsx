@@ -42,7 +42,7 @@ interface MapPoint {
 export default function Mapa() {
   const [points, setPoints] = useState<MapPoint[]>([]);
   const [loading, setLoading] = useState(true);
-  const [progress, setProgress] = useState(0); // Para mostrar o carregamento
+  const [progress, setProgress] = useState(0);
 
   const [filters, setFilters] = useState({
     vendido: true,
@@ -54,16 +54,17 @@ export default function Mapa() {
     loadMapData();
   }, []);
 
-  // 🚚 FUNÇÃO DE PAGINAÇÃO (O Caminhão de Dados)
+  // 🚚 FUNÇÃO DE PAGINAÇÃO
   const fetchAllPoints = async () => {
     let allData: any[] = [];
     let hasMore = true;
     let page = 0;
-    const pageSize = 1000; // Busca de 1000 em 1000
+    const pageSize = 1000;
 
     console.log("[Mapa] Iniciando busca paginada...");
 
     while (hasMore) {
+      // Adicionei tipagem explícita aqui para evitar recursão do TS
       const { data, error } = await supabase
         .from("points_of_interest")
         .select("id, nome, coordenadas, endereco")
@@ -79,7 +80,6 @@ export default function Mapa() {
           }`
         );
 
-        // Se vier menos que o tamanho da página, acabou
         if (data.length < pageSize) {
           hasMore = false;
         }
@@ -87,7 +87,7 @@ export default function Mapa() {
         hasMore = false;
       }
       page++;
-      setProgress((prev) => prev + 10); // Feedback visual
+      setProgress((prev) => prev + 10);
     }
 
     return allData;
@@ -98,34 +98,27 @@ export default function Mapa() {
       setLoading(true);
       setProgress(10);
 
-      // 1. Busca TODAS as escolas (Loop)
+      // 1. Busca TODAS as escolas
       const pdvs = await fetchAllPoints();
       setProgress(80);
 
-      // 2. Busca Visitas e Vendas (Essas tabelas costumam ser menores, mas idealmente paginar também no futuro)
-      const { data: visits } = await supabase.from("visits").select("point_id");
+      // 2. Busca Visitas e Vendas
+      // 👇 AQUI A CORREÇÃO PRINCIPAL: Adicionei ': any' para quebrar o loop do TS
+      const { data: visits }: any = await supabase
+        .from("visits")
+        .select("point_id");
 
-      const { data: customers } = await supabase
+      const { data: customers }: any = await supabase
         .from("customers")
         .select("id, nome_completo, pdv_id")
         .eq("status", "matriculado");
 
       if (!pdvs) return;
 
-      // 🔍 DEBUG: Confere se agora as vendas batem
-      const pdvIdsCarregados = new Set(pdvs.map((p: any) => p.id));
-      if (customers) {
-        customers.forEach((c: any) => {
-          if (c.pdv_id && !pdvIdsCarregados.has(c.pdv_id)) {
-            console.warn(
-              `❌ ALERTA CRÍTICO: PDV ${c.pdv_id} da venda ${c.nome_completo} AINDA não foi encontrado!`
-            );
-          }
-        });
-      }
-
-      const visitedSet = new Set(visits?.map((v) => v.point_id));
-      const soldSet = new Set(customers?.map((c) => c.pdv_id).filter(Boolean));
+      const visitedSet = new Set(visits?.map((v: any) => v.point_id));
+      const soldSet = new Set(
+        customers?.map((c: any) => c.pdv_id).filter(Boolean)
+      );
 
       const processedPoints: MapPoint[] = pdvs
         .filter((p: any) => p.coordenadas && p.coordenadas.includes(","))

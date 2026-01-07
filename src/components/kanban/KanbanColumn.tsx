@@ -1,33 +1,23 @@
-import { KanbanCard } from './KanbanCard';
+import { useDroppable } from "@dnd-kit/core";
+import { KanbanCard } from "./KanbanCard";
 
-type VisitStatus = 'a_visitar' | 'em_rota' | 'visitado' | 'finalizado';
+type VisitStatus = "a_visitar" | "em_rota" | "visitado" | "finalizado";
 
-interface POI {
-  id: string;
-  nome: string;
-  endereco: string;
-  bairro: string;
-  tipo: string;
-  coordenadas: string | null;
-}
-
-interface Visit {
-  id: string;
-  point_id: string;
-  status: VisitStatus;
-  collaborator_count: number | null;
-  checkin_time: string | null;
-  checkout_time: string | null;
-  poi: POI;
-}
-
+// Adicionei os tipos das novas props aqui 👇
 interface KanbanColumnProps {
   title: string;
   status: VisitStatus;
   color: string;
-  visits: Visit[];
-  onStatusChange: (visitId: string, newStatus: VisitStatus, collaboratorCount?: number) => void;
+  visits: any[];
+  onStatusChange: (
+    visitId: string,
+    newStatus: VisitStatus,
+    extraData?: any
+  ) => void;
   calculateDistance: (coords: string) => number | null;
+  // Novas props necessárias:
+  userLocation: { latitude: number; longitude: number } | null;
+  onSchedule: (visitId: string, date: Date) => void;
 }
 
 export function KanbanColumn({
@@ -37,32 +27,60 @@ export function KanbanColumn({
   visits,
   onStatusChange,
   calculateDistance,
+  userLocation, // Recebendo do Board
+  onSchedule, // Recebendo do Board
 }: KanbanColumnProps) {
+  const { setNodeRef } = useDroppable({
+    id: status,
+  });
+
   return (
-    <div className="flex flex-col bg-card/50 rounded-xl border border-border overflow-hidden">
-      <div className="p-4 border-b border-border flex items-center gap-3">
-        <div className={`w-3 h-3 rounded-full ${color}`} />
-        <h3 className="font-semibold">{title}</h3>
-        <span className="ml-auto text-sm text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+    <div className="flex flex-col h-full bg-muted/40 rounded-lg border border-border/50">
+      {/* Cabeçalho da Coluna */}
+      <div
+        className={`p-3 border-b border-border/50 flex justify-between items-center ${
+          status === "a_visitar"
+            ? "bg-blue-50/50 dark:bg-blue-900/10"
+            : status === "em_rota"
+            ? "bg-yellow-50/50 dark:bg-yellow-900/10"
+            : status === "visitado"
+            ? "bg-orange-50/50 dark:bg-orange-900/10"
+            : "bg-green-50/50 dark:bg-green-900/10"
+        }`}
+      >
+        <div className="flex items-center gap-2">
+          <div className={`w-2 h-2 rounded-full ${color}`} />
+          <h3 className="font-semibold text-sm">{title}</h3>
+        </div>
+        <span className="text-xs text-muted-foreground font-medium bg-background/50 px-2 py-0.5 rounded-full">
           {visits.length}
         </span>
       </div>
-      
-      <div className="flex-1 p-3 space-y-3 min-h-[200px] max-h-[calc(100vh-300px)] overflow-y-auto">
-        {visits.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground text-sm">
-            Nenhuma visita
+
+      {/* Área de Drop e Lista de Cards */}
+      <div
+        ref={setNodeRef}
+        className="flex-1 p-2 space-y-2 min-h-[150px] overflow-y-auto custom-scrollbar"
+      >
+        {visits.map((visit) => (
+          <KanbanCard
+            key={visit.id}
+            visit={visit}
+            currentStatus={status}
+            onStatusChange={onStatusChange}
+            calculateDistance={calculateDistance}
+            // Repassando para o Card 👇
+            userLocation={userLocation}
+            onSchedule={onSchedule}
+          />
+        ))}
+
+        {visits.length === 0 && (
+          <div className="h-full flex items-center justify-center border-2 border-dashed border-muted rounded-md opacity-50 p-4">
+            <span className="text-xs text-muted-foreground text-center">
+              Arraste itens aqui ou inicie uma rota
+            </span>
           </div>
-        ) : (
-          visits.map((visit) => (
-            <KanbanCard
-              key={visit.id}
-              visit={visit}
-              currentStatus={status}
-              onStatusChange={onStatusChange}
-              calculateDistance={calculateDistance}
-            />
-          ))
         )}
       </div>
     </div>
