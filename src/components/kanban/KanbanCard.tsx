@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea"; // Importei Textarea
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -27,7 +27,7 @@ import {
   MicOff,
   User,
   Users,
-} from "lucide-react"; // Adicionei Mic, MicOff, User
+} from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -56,7 +56,6 @@ interface Visit {
   scheduled_for: string | null;
   poi: POI | null;
   assignee: Profile | null;
-  // Novos campos opcionais (caso já venham populados)
   summary?: string;
   responsible_name?: string;
 }
@@ -105,12 +104,15 @@ export function KanbanCard({
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
 
+  // Estados Cerca/Agendamento
   const [justification, setJustification] = useState("");
   const [scheduleDate, setScheduleDate] = useState("");
 
   // Verifica suporte a voz ao carregar
   useEffect(() => {
-    if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
+    // 👇 CORREÇÃO: Usamos (window as any) para o TS não reclamar
+    const win = window as any;
+    if ("webkitSpeechRecognition" in win || "SpeechRecognition" in win) {
       setSpeechSupported(true);
     }
   }, []);
@@ -123,37 +125,32 @@ export function KanbanCard({
 
   // 🧠 FUNÇÃO CEREBRAL: Processa o texto falado
   const processVoiceInput = (text: string) => {
-    setSummary(text); // Preenche o resumo com tudo o que foi dito
+    setSummary(text);
 
     const lowerText = text.toLowerCase();
 
     // 1. Tenta achar o NOME DO RESPONSÁVEL
-    // Padrões: "responsável é o Jorge", "falei com a Maria", "gerente Carlos"
     const responsiblePatterns = [
       /(?:responsável|gerente|diretor|falei com)\s+(?:é\s+|o\s+|a\s+|foi\s+)?([A-Z][a-zà-ú]+)/i,
     ];
 
     for (const pattern of responsiblePatterns) {
-      const match = text.match(pattern); // Usa o texto original pra pegar Maiúscula se possível
+      const match = text.match(pattern);
       if (match && match[1]) {
-        // Capitaliza a primeira letra caso venha minúscula
         const name = match[1].charAt(0).toUpperCase() + match[1].slice(1);
         setResponsibleName(name);
-        break; // Achou, para.
+        break;
       }
     }
 
     // 2. Tenta achar QUANTIDADE DE COLABORADORES
-    // Padrões: "tem 10 colaboradores", "20 funcionários", "equipe de 5"
     const countPattern =
       /(\d+)\s+(?:colaboradores|funcionários|pessoas|membros|vendedores)/i;
     const countMatch = lowerText.match(countPattern);
 
-    // Se não achar número direto, tenta números por extenso simples (um a dez)
     if (countMatch && countMatch[1]) {
       setCollaboratorCount(countMatch[1]);
     } else {
-      // Mapa básico de números por extenso
       const numberMap: Record<string, string> = {
         um: "1",
         dois: "2",
@@ -183,9 +180,10 @@ export function KanbanCard({
       return;
     }
 
-    // @ts-ignore - Typescript as vezes não reconhece webkitSpeechRecognition nativo
+    // 👇 CORREÇÃO: Casting explícito para any para ignorar o erro de tipo
     const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
 
     recognition.lang = "pt-BR";
@@ -193,7 +191,6 @@ export function KanbanCard({
     recognition.maxAlternatives = 1;
 
     recognition.onstart = () => setIsListening(true);
-
     recognition.onend = () => setIsListening(false);
 
     recognition.onresult = (event: any) => {
@@ -212,6 +209,7 @@ export function KanbanCard({
   // --- MANIPULADORES DE AÇÃO ---
 
   const handleCheckInAttempt = () => {
+    // Cerca Eletrônica: 300 metros
     if (distance !== null && distance > 0.3) {
       setShowFraudDialog(true);
     } else {
@@ -247,9 +245,7 @@ export function KanbanCard({
   };
 
   const handleFinalize = () => {
-    // Validação básica
     const count = parseInt(collaboratorCount, 10);
-    // Permite salvar sem count se quiser, ou force validação aqui
 
     onStatusChange(visit.id, "finalizado", {
       collaborator_count: isNaN(count) ? null : count,
@@ -258,7 +254,6 @@ export function KanbanCard({
     });
 
     setShowFinishDialog(false);
-    // Limpa estados
     setCollaboratorCount("");
     setResponsibleName("");
     setSummary("");
@@ -400,7 +395,7 @@ export function KanbanCard({
         </DialogContent>
       </Dialog>
 
-      {/* 🏁 DIALOG DE FINALIZAÇÃO INTELIGENTE */}
+      {/* 🏁 DIALOG DE FINALIZAÇÃO INTELIGENTE (COM FUNDO BRANCO E LETRA PRETA) */}
       <Dialog open={showFinishDialog} onOpenChange={setShowFinishDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -440,7 +435,7 @@ export function KanbanCard({
                   placeholder="Ex: Jorge"
                   value={responsibleName}
                   onChange={(e) => setResponsibleName(e.target.value)}
-                  className="text-zinc-900"
+                  className="bg-white text-zinc-900 placeholder:text-zinc-500 border-zinc-200"
                 />
               </div>
               <div className="space-y-2">
@@ -452,7 +447,7 @@ export function KanbanCard({
                   placeholder="Ex: 15"
                   value={collaboratorCount}
                   onChange={(e) => setCollaboratorCount(e.target.value)}
-                  className="text-zinc-900"
+                  className="bg-white text-zinc-900 placeholder:text-zinc-500 border-zinc-200"
                 />
               </div>
             </div>
@@ -465,7 +460,7 @@ export function KanbanCard({
                 placeholder="Detalhes sobre a visita..."
                 value={summary}
                 onChange={(e) => setSummary(e.target.value)}
-                className="min-h-[80px] text-zinc-900 resize-none"
+                className="min-h-[80px] bg-white text-zinc-900 placeholder:text-zinc-500 border-zinc-200 resize-none"
               />
             </div>
           </div>
@@ -479,6 +474,7 @@ export function KanbanCard({
         </DialogContent>
       </Dialog>
 
+      {/* 🛡️ CERCA ELETRÔNICA - JUSTIFICATIVA */}
       <Dialog open={showFraudDialog} onOpenChange={setShowFraudDialog}>
         <DialogContent className="sm:max-w-md border-red-200 bg-red-50">
           <DialogHeader>
