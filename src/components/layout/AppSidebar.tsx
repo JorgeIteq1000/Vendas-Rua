@@ -41,6 +41,7 @@ const menuItems = {
     { title: "Vendas", icon: ShoppingCart, href: "/vendas" },
     { title: "Cadastrar", icon: UserPlus, href: "/cadastrar-cliente" }, // Ajustei para apontar para o cadastro de cliente se ele for vender
     { title: "Equipe", icon: Users, href: "/equipe" },
+    { title: "Ver Equipe (GPS)", icon: Map, href: "/ver-vendedores" }, // 👈 NOVO
   ],
   admin: [
     { title: "PDV", icon: LayoutGrid, href: "/" },
@@ -50,6 +51,7 @@ const menuItems = {
     { title: "Gerentes", icon: Users, href: "/gerentes" },
     { title: "Relatórios de Vendas", icon: FileText, href: "/vendas" },
     { title: "Mapa de Calor", icon: Map, href: "/mapa" }, // NOVO
+    { title: "Ver Equipe (GPS)", icon: Map, href: "/ver-vendedores" }, // 👈 NOVO
   ],
 };
 

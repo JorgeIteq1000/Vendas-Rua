@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute"; // 👈 Importamos o segurança
-
+import VerVendedores from "./pages/VerVendedores"; // 👈 Importe aqui
 // Páginas
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -104,7 +104,14 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-
+            <Route
+              path="/ver-vendedores"
+              element={
+                <ProtectedRoute>
+                  <VerVendedores />
+                </ProtectedRoute>
+              }
+            />
             {/* Rota de Erro */}
             <Route path="*" element={<NotFound />} />
           </Routes>
