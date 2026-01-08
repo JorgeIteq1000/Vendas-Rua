@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
-import { SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
+import {
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+} from "@/components/ui/sidebar";
 import {
   Download,
   Smartphone,
@@ -7,6 +11,7 @@ import {
   MoreVertical,
   PlusSquare,
 } from "lucide-react";
+
 import {
   Dialog,
   DialogContent,
@@ -14,33 +19,36 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export function InstallPrompt() {
+  const { setOpenMobile } = useSidebar();
+
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isStandalone, setIsStandalone] = useState(false);
   const [showInstruction, setShowInstruction] = useState(false);
   const [os, setOs] = useState<"android" | "ios">("android");
 
   useEffect(() => {
-    // 1. Verifica se já está instalado (Modo App)
-    const isStandaloneMode =
+    // Detecta se já está instalado
+    const standalone =
       window.matchMedia("(display-mode: standalone)").matches ||
       (window.navigator as any).standalone ||
       document.referrer.includes("android-app://");
 
-    setIsStandalone(isStandaloneMode);
+    setIsStandalone(standalone);
 
-    // 2. Tenta detectar se é iPhone para já abrir a aba certa
-    const userAgent = window.navigator.userAgent.toLowerCase();
-    if (/iphone|ipad|ipod/.test(userAgent)) {
+    // Detecta iOS
+    const ua = window.navigator.userAgent.toLowerCase();
+    if (/iphone|ipad|ipod/.test(ua)) {
       setOs("ios");
     }
 
-    // 3. Captura o evento nativo do Chrome (se ele disparar)
+    // Captura o evento do Android
     const handler = (e: any) => {
-      e.preventDefault(); // Impede o banner feio automático
-      setDeferredPrompt(e); // Guarda o poder de instalar para o nosso botão
+      e.preventDefault();
+      setDeferredPrompt(e);
     };
 
     window.addEventListener("beforeinstallprompt", handler);
@@ -48,25 +56,33 @@ export function InstallPrompt() {
   }, []);
 
   const handleInstallClick = async () => {
-    // Se o navegador "deixou" instalar nativamente, usa isso
     if (deferredPrompt) {
+      // ANDROID NATIVO
       deferredPrompt.prompt();
+
       const { outcome } = await deferredPrompt.userChoice;
       if (outcome === "accepted") {
         setDeferredPrompt(null);
       }
+
+      setOpenMobile(false);
     } else {
-      // Se não, abre o manual de instruções
+      // MANUAL / IOS
+      // 🔥 ABRE O MODAL PRIMEIRO
       setShowInstruction(true);
+
+      // 🔥 FECHA O MENU DEPOIS
+      setTimeout(() => {
+        setOpenMobile(false);
+      }, 100);
     }
   };
 
-  // Se já estiver instalado, o botão some
+  // Não mostra se já estiver instalado
   if (isStandalone) return null;
 
   return (
     <>
-      {/* Botão sempre visível no Menu */}
       <SidebarMenuItem>
         <SidebarMenuButton
           onClick={handleInstallClick}
@@ -78,9 +94,9 @@ export function InstallPrompt() {
         </SidebarMenuButton>
       </SidebarMenuItem>
 
-      {/* Modal de Instruções (Caso o clique direto falhe) */}
+      {/* MODAL */}
       <Dialog open={showInstruction} onOpenChange={setShowInstruction}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md z-[110]">
           <DialogHeader>
             <DialogTitle>Instalar Vendas Externas</DialogTitle>
             <DialogDescription>
@@ -89,54 +105,49 @@ export function InstallPrompt() {
             </DialogDescription>
           </DialogHeader>
 
-          <Tabs defaultValue={os} className="w-full">
+          <Tabs value={os} onValueChange={(v) => setOs(v as any)}>
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="android" onClick={() => setOs("android")}>
-                Android
-              </TabsTrigger>
-              <TabsTrigger value="ios" onClick={() => setOs("ios")}>
-                iPhone (iOS)
-              </TabsTrigger>
+              <TabsTrigger value="android">Android</TabsTrigger>
+              <TabsTrigger value="ios">iPhone (iOS)</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="android" className="space-y-4 pt-4">
-              <ol className="list-decimal list-inside space-y-3 text-sm text-muted-foreground">
+            <TabsContent value="android" className="pt-4 space-y-3">
+              <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-2">
                 <li className="flex items-center gap-2">
-                  Toque no menu do navegador{" "}
-                  <MoreVertical className="w-4 h-4 text-primary inline" /> (três
-                  pontinhos).
+                  Toque no menu{" "}
+                  <MoreVertical className="w-4 h-4 text-primary" /> do
+                  navegador.
                 </li>
-                <li className="flex items-center gap-2">
+                <li>
                   Selecione{" "}
-                  <span className="font-bold text-foreground">
+                  <strong className="text-foreground">
                     Instalar aplicativo
-                  </span>{" "}
+                  </strong>{" "}
                   ou{" "}
-                  <span className="font-bold text-foreground">
+                  <strong className="text-foreground">
                     Adicionar à tela inicial
-                  </span>
+                  </strong>
                   .
                 </li>
-                <li>Confirme a instalação e procure o ícone no seu celular!</li>
+                <li>Confirme e procure o ícone no celular.</li>
               </ol>
             </TabsContent>
 
-            <TabsContent value="ios" className="space-y-4 pt-4">
-              <ol className="list-decimal list-inside space-y-3 text-sm text-muted-foreground">
+            <TabsContent value="ios" className="pt-4 space-y-3">
+              <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-2">
                 <li className="flex items-center gap-2">
-                  Toque no botão Compartilhar{" "}
-                  <Share className="w-4 h-4 text-blue-500 inline" /> na barra
-                  inferior.
+                  Toque em Compartilhar{" "}
+                  <Share className="w-4 h-4 text-blue-500" />.
                 </li>
                 <li className="flex items-center gap-2">
-                  Role para cima e toque em{" "}
-                  <span className="font-bold text-foreground flex items-center gap-1">
-                    <PlusSquare className="w-4 h-4" /> Adicionar à Tela de
-                    Início
-                  </span>
+                  Selecione{" "}
+                  <strong className="flex items-center gap-1 text-foreground">
+                    <PlusSquare className="w-4 h-4" />
+                    Adicionar à Tela de Início
+                  </strong>
                   .
                 </li>
-                <li>Clique em "Adicionar" no canto superior direito.</li>
+                <li>Toque em “Adicionar”.</li>
               </ol>
             </TabsContent>
           </Tabs>
